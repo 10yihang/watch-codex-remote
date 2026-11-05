@@ -1,0 +1,135 @@
+{
+  "mode": "OFFLINE_ONLY",
+  "signatureVerifiedLocally": true,
+  "privateKeyPersisted": false,
+  "networkCalls": 0,
+  "authenticated": false,
+  "liveHostTested": false,
+  "websocketProof": {
+    "type": "device_key_proof",
+    "keyId": "offline-ephemeral-key",
+    "signatureDerBase64": "MEUCIQD7jCmrxU2qKPBcYBCdGPV33vgyAkBw6Z3a3kGUHhnnOQIgMhAG5z7k0zHCrJDqnY2jX2AkPg/wpvkdoKUDJNsy/9k=",
+    "signedPayloadBase64": "eyJkb21haW4iOiJjb2RleC1kZXZpY2Uta2V5LXNpZ24tcGF5bG9hZC92MSIsInBheWxvYWQiOnsiYWNjb3VudFVzZXJJZCI6Im9mZmxpbmUtYWNjb3VudCIsImF1ZGllbmNlIjoicmVtb3RlX2NvbnRyb2xfY2xpZW50X3dlYnNvY2tldCIsImNsaWVudElkIjoib2ZmbGluZS1jbGllbnQiLCJub25jZSI6IkFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUEiLCJzY29wZXMiOlsicmVtb3RlX2NvbnRyb2xfY29udHJvbGxlcl93ZWJzb2NrZXQiXSwic2Vzc2lvbklkIjoib2ZmbGluZS1zZXNzaW9uIiwidGFyZ2V0T3JpZ2luIjoiaHR0cHM6Ly9jaGF0Z3B0LmNvbSIsInRhcmdldFBhdGgiOiIvYmFja2VuZC1hcGkvY29kZXgvcmVtb3RlL2NvbnRyb2wvY2xpZW50IiwidG9rZW5FeHBpcmVzQXQiOjIwMDAwMDAwMDAsInRva2VuU2hhMjU2QmFzZTY0dXJsIjoiV1Q2R3VWNlUtd084MzZrZE55X2gzZ25jRFRRenozd2hacGV5TTBWQ3lWMCIsInR5cGUiOiJyZW1vdGVDb250cm9sQ2xpZW50Q29ubmVjdGlvbiJ9fQ==",
+    "algorithm": "ecdsa_p256_sha256"
+  },
+  "encodedFrames": [
+    {
+      "type": "client_message",
+      "client_id": "offline-client",
+      "seq_id": 1,
+      "stream_id": "offline-stream",
+      "env_id": "offline-existing-host",
+      "skip_history": false,
+      "message": {
+        "id": 1,
+        "method": "initialize",
+        "params": {
+          "clientInfo": {
+            "name": "watch_codex_offline_probe",
+            "title": null,
+            "version": "0.1.0"
+          },
+          "capabilities": null
+        }
+      }
+    },
+    {
+      "type": "client_message",
+      "client_id": "offline-client",
+      "seq_id": 2,
+      "stream_id": "offline-stream",
+      "env_id": "offline-existing-host",
+      "skip_history": false,
+      "message": {
+        "method": "initialized"
+      }
+    },
+    {
+      "type": "client_message",
+      "client_id": "offline-client",
+      "seq_id": 3,
+      "stream_id": "offline-stream",
+      "env_id": "offline-existing-host",
+      "skip_history": false,
+      "message": {
+        "id": 2,
+        "method": "thread/list",
+        "params": {
+          "limit": 20,
+          "cursor": null,
+          "currentAccountOnly": true
+        }
+      }
+    },
+    {
+      "type": "client_message",
+      "client_id": "offline-client",
+      "seq_id": 4,
+      "stream_id": "offline-stream",
+      "env_id": "offline-existing-host",
+      "skip_history": false,
+      "message": {
+        "id": 3,
+        "method": "thread/read",
+        "params": {
+          "threadId": "offline-existing-thread",
+          "includeTurns": false
+        }
+      }
+    },
+    {
+      "type": "client_message",
+      "client_id": "offline-client",
+      "seq_id": 5,
+      "stream_id": "offline-stream",
+      "env_id": "offline-existing-host",
+      "skip_history": false,
+      "message": {
+        "id": 4,
+        "method": "thread/resume",
+        "params": {
+          "threadId": "offline-existing-thread",
+          "excludeTurns": true
+        }
+      }
+    },
+    {
+      "type": "client_message",
+      "client_id": "offline-client",
+      "seq_id": 6,
+      "stream_id": "offline-stream",
+      "env_id": "offline-existing-host",
+      "skip_history": false,
+      "message": {
+        "id": 5,
+        "method": "turn/start",
+        "params": {
+          "threadId": "offline-existing-thread",
+          "input": [
+            {
+              "type": "text",
+              "text": "Offline example only; never sent.",
+              "text_elements": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "client_message",
+      "client_id": "offline-client",
+      "seq_id": 7,
+      "stream_id": "offline-stream",
+      "env_id": "offline-existing-host",
+      "skip_history": false,
+      "message": {
+        "id": 6,
+        "method": "turn/interrupt",
+        "params": {
+          "threadId": "offline-existing-thread",
+          "turnId": "offline-existing-turn"
+        }
+      }
+    }
+  ]
+}

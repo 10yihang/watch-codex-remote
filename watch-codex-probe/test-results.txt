@@ -1,0 +1,28 @@
+✔ identity hash matches rcodex golden field order (2.801362ms)
+✔ enrollment payload matches the pinned upstream golden bytes (1.788892ms)
+✔ connection payload matches the pinned upstream golden bytes (1.894958ms)
+✔ refresh requires matching server identity hash and a refresh target (1.058478ms)
+✔ enrollment rejects wrong account, client, purpose, audience and destination (0.382283ms)
+✔ missing local identity and ambiguous dates fail closed (0.668373ms)
+✔ signing rejects expired challenges and sessions at the boundary (0.342053ms)
+✔ expiry parser rejects normalized invalid dates and matches chrono fractional seconds (1.664129ms)
+✔ nonce and digest validation rejects padding, short and noncanonical bytes (0.481148ms)
+✔ connection binds signature to exact session, account, client, scope and relay (2.112479ms)
+✔ ephemeral P-256 key exports expected SPKI and DER signature verifies (3.838098ms)
+✔ SPKI conversion rejects compressed or malformed public keys (0.236257ms)
+✔ WebSocket proof uses standard base64 and rejects tampered signatures (1.326391ms)
+✔ initialize and initialized use the App Server shapes (1.29786ms)
+✔ thread list preserves opaque cursor and scopes local discovery (0.195187ms)
+✔ read and resume target existing thread without overriding permissions (0.196679ms)
+✔ turn start preserves text_elements and interrupt requires exact turn (0.548477ms)
+✔ probe cannot construct thread creation, forks, unknown methods or invalid IDs (0.173485ms)
+✔ relay v3 envelope preserves route, stream and sequence (0.725909ms)
+✔ demo explicitly reports offline-only and never claims real authorization (1.051057ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 181.247149
