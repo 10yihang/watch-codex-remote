@@ -77,7 +77,7 @@ struct PhoneThreadView: View {
                             .foregroundStyle(thread.state == .running ? Color.accentColor : .secondary)
                         Text(thread.summary).font(.body).textSelection(.enabled)
                     } header: { Text(thread.project) } footer: { Text("示例内容 · Remote 未连接") }
-                    Section("在已有会话里继续") {
+                    Section {
                         TextField("输入演示指令", text: $draft, axis: .vertical)
                             .lineLimit(3...8)
                             .accessibilityHint("最多 2000 字，仅用于本地演示")
@@ -88,6 +88,8 @@ struct PhoneThreadView: View {
                                 store.send(text: draft, threadID: threadID)
                             }.disabled(!store.canMutate || thread.state == .running || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || draft.count > 2000)
                         }
+                    } header: {
+                        Text("在已有会话里继续")
                     } footer: {
                         Text(thread.state == .running ? "先模拟停止当前 turn，再体验发送新指令。" : "输入保留在当前页面，不发送到任何 Remote 主机。")
                     }
