@@ -7,7 +7,8 @@ struct WatchCodexWatchApp: App {
     @WKApplicationDelegateAdaptor(WatchDelegate.self) var delegate
     @StateObject private var store = CompanionStore()
     var body: some Scene {
-        WindowGroup { WatchRootView().environmentObject(store).tint(.accentColor) }
+        WindowGroup { WatchRootView().environmentObject(store).tint(.accentColor)
+                .environment(\.colorScheme, .dark) }
     }
 }
 

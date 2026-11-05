@@ -41,7 +41,7 @@ def select_device(devices, platform, preferred):
     return {**device, 'runtime': runtime}
 
 
-def capture(device, app, bundle, filename, appearance=None):
+def capture(device, app, bundle, filename, appearance=None, content_size=None):
     udid = device['udid']
     if device['state'] != 'Booted':
         run('xcrun', 'simctl', 'boot', udid)
@@ -50,6 +50,8 @@ def capture(device, app, bundle, filename, appearance=None):
     run('xcrun', 'simctl', 'install', udid, app)
     if appearance:
         run('xcrun', 'simctl', 'ui', udid, 'appearance', appearance)
+    if content_size:
+        run('xcrun', 'simctl', 'ui', udid, 'content_size', content_size)
     launch = run('xcrun', 'simctl', 'launch', '--terminate-running-process', udid, bundle,
                  '-AppleLanguages', '(zh-Hans)', '-AppleLocale', 'zh_CN')
     time.sleep(10)  # Allow first-launch SwiftUI layout and system animations to finish.
@@ -59,7 +61,7 @@ def capture(device, app, bundle, filename, appearance=None):
         raise RuntimeError(f'Capture missing or unexpectedly small: {filename}')
     return {'file': filename, 'device': device['name'], 'runtime': device['runtime'],
             'bundle': bundle, 'appearance': appearance or 'watchOS default',
-            'launch': launch.strip(), 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
+            'content_size': content_size or 'default', 'launch': launch.strip(), 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
 
 
 def main():
@@ -67,6 +69,7 @@ def main():
     (OUTPUT / 'simulator-inventory.json').write_text(json.dumps(inventory, indent=2))
     phone = select_device(inventory['devices'], 'iOS', ['iPhone 16 Pro Max', 'iPhone 16 Pro', 'iPhone'])
     watch = select_device(inventory['devices'], 'watchOS', ['Ultra 2', '46mm', '45mm', 'Apple Watch'])
+    small_watch = select_device(inventory['devices'], 'watchOS', ['42mm', '41mm', '40mm'])
     products = ROOT / '.build' / 'apple' / 'Build' / 'Products'
     phone_app = products / 'Debug-iphonesimulator' / 'WatchCodexPhone.app'
     watch_app = products / 'Debug-watchsimulator' / 'WatchCodexWatch.app'
@@ -77,7 +80,10 @@ def main():
     try:
         metadata['captures'].append(capture(phone, phone_app, 'org.example.watchcodex', 'iphone-demo-light.png', 'light'))
         metadata['captures'].append(capture(phone, phone_app, 'org.example.watchcodex', 'iphone-demo-dark.png', 'dark'))
+        metadata['captures'].append(capture(phone, phone_app, 'org.example.watchcodex', 'iphone-demo-accessibility.png', 'light', 'accessibility-large'))
         metadata['captures'].append(capture(watch, watch_app, 'org.example.watchcodex.watchkitapp', 'watch-demo.png'))
+        if small_watch['udid'] != watch['udid']:
+            metadata['captures'].append(capture(small_watch, watch_app, 'org.example.watchcodex.watchkitapp', 'watch-demo-small.png'))
     finally:
         (OUTPUT / 'capture-evidence.json').write_text(json.dumps(metadata, ensure_ascii=False, indent=2))
     print('Captured actual simulator app screens. Human visual review is still required.')

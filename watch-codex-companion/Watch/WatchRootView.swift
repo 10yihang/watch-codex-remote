@@ -4,42 +4,82 @@ struct WatchRootView: View {
     @EnvironmentObject private var store: CompanionStore
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    VStack(alignment: .leading, spacing: 5) {
-                        Label("Remote 未连接", systemImage: "network.slash").font(.caption.weight(.semibold))
-                        Text(store.sourceLabel).font(.caption2).foregroundStyle(.secondary)
-                    }.padding(.vertical, 3)
-                }
-                Section("已有示例会话") {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("演示 · Remote 未连接")
+                        .font(.caption2).foregroundStyle(.secondary)
+                        .padding(.horizontal, 4)
+
                     if store.snapshot.threads.isEmpty {
-                        VStack(alignment: .leading, spacing: 6) {
+                        VStack(alignment: .leading, spacing: 8) {
                             Text("还没有手机快照").font(.headline)
                             Text("打开 iPhone App 后刷新，或切换到本机演示。")
                                 .font(.caption).foregroundStyle(.secondary)
-                        }
+                        }.padding(12)
                     }
                     ForEach(store.snapshot.threads) { thread in
                         NavigationLink { WatchThreadView(threadID: thread.id) } label: {
-                            VStack(alignment: .leading, spacing: 5) {
-                                Label(thread.state.label, systemImage: thread.state.symbol)
-                                    .font(.caption2).foregroundStyle(thread.state == .running ? Color.accentColor : .secondary)
-                                Text(thread.title).font(.headline).lineLimit(2)
-                                Text(thread.project).font(.caption2).foregroundStyle(.secondary)
-                            }.padding(.vertical, 3)
+                            WatchSessionRow(thread: thread)
                         }
+                        .buttonStyle(.plain)
                     }
+                    HStack(spacing: 8) {
+                        Button { store.refresh() } label: {
+                            Image(systemName: "arrow.clockwise")
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        .accessibilityLabel(store.busy ? "等待 iPhone" : "刷新演示")
+                        .disabled(store.busy)
+                        NavigationLink { WatchConnectionView() } label: {
+                            Image(systemName: "slider.horizontal.3")
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                        }.accessibilityLabel("来源与回执")
+                    }
+                    .buttonStyle(.bordered)
+                    Text("\(store.sourceLabel) · \(store.snapshot.generatedAt.formatted(date: .omitted, time: .shortened))")
+                        .font(.caption2).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
                 }
-                Section {
-                    Button { store.refresh() } label: {
-                        Label(store.busy ? "等待 iPhone…" : "刷新演示", systemImage: "arrow.clockwise")
-                    }.disabled(store.busy)
-                    NavigationLink { WatchConnectionView() } label: { Label("来源与回执", systemImage: "antenna.radiowaves.left.and.right") }
-                } footer: {
-                    Text("示例快照 \(store.snapshot.generatedAt.formatted(date: .omitted, time: .shortened))")
-                }
-            }.navigationTitle("Remote")
+                .padding(.horizontal, 10)
+                .padding(.bottom, 8)
+            }
+            .navigationTitle("Codex")
+            .navigationBarTitleDisplayMode(.inline)
         }
+    }
+}
+
+private struct WatchSessionRow: View {
+    let thread: ThreadSummary
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            if thread.state == .running {
+                Label(thread.state.label, systemImage: thread.state.symbol)
+                    .font(.caption2.weight(.medium)).foregroundStyle(Color.accentColor)
+            }
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Text(thread.title)
+                    .font(thread.state == .running ? .headline : .subheadline.weight(.medium))
+                    .foregroundStyle(.primary).lineLimit(2)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+            }
+            HStack(spacing: 5) {
+                if thread.state != .running {
+                    Image(systemName: thread.state.symbol).accessibilityHidden(true)
+                }
+                Text(thread.project).lineLimit(1)
+            }
+            .font(.caption2).foregroundStyle(.secondary)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(thread.state == .running ? Color.accentColor.opacity(0.12) : Color.white.opacity(0.07),
+                    in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityValue(thread.state.label)
     }
 }
 
