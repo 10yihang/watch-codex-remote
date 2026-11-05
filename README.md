@@ -20,7 +20,7 @@ The `Apple simulator build` workflow uses standard GitHub-hosted Ubuntu and `mac
 3. Build the iPhone and Watch simulator apps with signing disabled.
 4. Retain the Apple build log for seven days.
 
-The workflow has read-only repository permissions, does not use repository secrets, and does not enroll devices, sign in, pair hosts, sign builds or install on physical devices. A passing build does not verify UI appearance, iPhone lock-screen operation, WatchConnectivity on devices or real Remote compatibility. Historical test reports describe the original pre-CI state; check the workflow run for current Apple-build results.
+The workflow has read-only repository permissions, does not use repository secrets, and does not enroll devices, sign in, pair hosts, sign builds or install on physical devices. A passing build does not verify UI appearance, iPhone lock-screen operation, WatchConnectivity on devices or real Remote compatibility. Cloud verification passed on 2026-11-05: 16 source checks, 20 offline protocol tests, 18 Swift tests and both simulator builds ([verified run](https://github.com/10yihang/watch-codex-remote/actions/runs/41960076332)). See `watch-codex-companion/Docs/TEST_REPORT.md` for the evidence and remaining checks; use each commit’s workflow run for its current result.
 
 To run the equivalent checks on a Mac with Xcode selected:
 

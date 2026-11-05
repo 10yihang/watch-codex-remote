@@ -12,7 +12,7 @@
 - `WatchCodexWatch`：watchOS 10+ 的现代单 Target Watch App，无旧式 extension target。
 - `Package.swift`：独立纯 Foundation 核心与 18 项 XCTest，可运行 `swift test`。
 
-推荐使用安装了 iOS/watchOS Simulator SDK 的 Xcode 16 或更新版本。此云环境没有 Xcode/Swift，**尚未进行 Swift 编译、Xcode 工程加载、模拟器或真机测试**；不能保证首次 Apple 构建无须修正。
+推荐使用安装了 iOS/watchOS Simulator SDK 的 Xcode 16 或更新版本。已于 2026-11-05 在 GitHub 云端 Xcode 16.4 / Swift 6.1.2 通过 18 项核心测试、工程加载及 iPhone/watchOS 模拟器构建：[构建记录](https://github.com/10yihang/watch-codex-remote/actions/runs/41960076332)。**尚未运行模拟器 UI 或真机测试，也没有接入真实 Remote。**
 
 一次运行所有 Apple 构建前检查：
 
@@ -45,7 +45,7 @@ bash Scripts/verify_apple.sh
 - `Shared/Connectivity.swift`：真实 WatchConnectivity API，最新快照与即时请求/回执。
 - `Shared/CompanionStore.swift`：界面状态、明确来源、未知结果和手动刷新。
 - `iPhone/`、`Watch/`：SwiftUI App 与界面，现代 watchOS 生命周期处理。
-- `Tests/CompanionCoreTests/`：18 项 Swift XCTest，已写好但未运行。
+- `Tests/CompanionCoreTests/`：18 项 Swift XCTest，已在 GitHub 云端运行并全部通过。
 - `Scripts/check_source.py`：可在 Linux 执行的结构检查，不是 Swift 编译器。
 - `Scripts/generate_project.py`：无外部依赖的确定性工程生成器；日常直接打开已生成工程即可。修改过 bundle ID/签名后不要直接重跑生成器，否则会回到模板默认值。
 - `Docs/TEST_REPORT.md`、`Docs/DEVICE_CHECKLIST.md`：已做检查与待做验收分开记录。

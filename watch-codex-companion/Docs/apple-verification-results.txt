@@ -1,1 +1,14 @@
-BLOCKED: Full Xcode and Swift are required. No Apple build has run.
+Apple cloud verification summary
+UTC date: 2026-11-05
+Source commit: 9a30cee10bb193bc01055efec0b38fd32ff60cfa
+Run: https://github.com/10yihang/watch-codex-remote/actions/runs/41960076332
+Runner: GitHub-hosted macos-15 (macos-15-arm64)
+Xcode: 16.4, build 16F6
+Swift: 6.1.2
+Swift XCTest: Executed 18 tests, with 0 failures
+WatchCodexPhone iOS Simulator Debug build: BUILD SUCCEEDED
+WatchCodexWatch watchOS Simulator Debug build: BUILD SUCCEEDED
+CODE_SIGNING_ALLOWED=NO
+No simulator UI or device test has run. No real Remote authentication or connection was tested.
+Full log artifact: https://github.com/10yihang/watch-codex-remote/actions/runs/41960076332/artifacts/13385012340
+Artifact expiration: 2026-11-12

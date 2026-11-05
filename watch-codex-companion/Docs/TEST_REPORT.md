@@ -1,36 +1,33 @@
 # 验证报告
 
-验证日期：2026-11-04（UTC）。平台：Linux；Node.js 24.22.1；Python 3.12.14。
+验证日期：2026-11-05（UTC）。最终功能修复源码：`9a30cee10bb193bc01055efec0b38fd32ff60cfa`。
+
+[GitHub Actions 成功记录](https://github.com/10yihang/watch-codex-remote/actions/runs/41960076332) · [完整 Apple 构建日志](https://github.com/10yihang/watch-codex-remote/actions/runs/41960076332/artifacts/13385012340)（artifact 保留至 2026-11-12）。
 
 ## 已执行并通过
 
-- **16 项 Python 源码/工程检查**：两个现代应用 target、PBX 引用完整性、Swift 文件存在、bundle/companion 对应、嵌入 Watch 关系、scheme XML、无 Remote 认证/网络/凭证代码、命令不进入后台队列、失败刷新保留未知状态、无 thread 创建/fork、明确演示文案、停止确认捕获 turn、后台任务排空条件、浅深/高对比强调色对比度、工程生成确定性、18 项 Swift 测试存在。
-- **20 项上一阶段 Node 离线探针测试**：全部通过，测试内容及约束保留在 `watch-codex-probe/README.md`。这些是原探针的测试，不是原生 Swift 测试。
-- Python 脚本语法检查通过。
-- 对最终源码做独立静态审查，修复回调递归、失败刷新误解锁、摘要长度边界、后台任务过早完成、停止弹窗目标被新快照替换等问题。
+- **16 项 Python 源码/工程检查**：工程引用、双 target 与嵌入关系、scheme、演示边界、命令状态约束、工程生成确定性等。
+- **20 项 Node 离线协议测试**：协议编码、签名与边界测试；不是线上 Remote 联调。
+- **18 项 Swift XCTest**：在 GitHub 标准 `macos-15` 云端 runner 上执行，0 failures。
+- **Xcode 工程加载**：`xcodebuild -list` 识别两个 target 与两个 shared scheme。
+- **iPhone 模拟器构建**：`WatchCodexPhone`，Debug，`generic/platform=iOS Simulator`，成功；包含嵌入 Watch App。
+- **Watch 模拟器构建**：`WatchCodexWatch`，Debug，`generic/platform=watchOS Simulator`，成功。
 
-原始输出：`source-check-results.txt`、`probe-test-results.txt`。
+Apple 工具链为 Xcode 16.4（16F6）、Swift 6.1.2。两个构建均设置 `CODE_SIGNING_ALLOWED=NO`；没有访问用户的 Mac，没有设备安装、登录、配对或签名。
 
-## 已尝试但被环境阻塞
+## 首次云端构建发现并修复
 
-`bash Scripts/verify_apple.sh` 返回退出码 2：
+[首次运行](https://github.com/10yihang/watch-codex-remote/actions/runs/41959627037)的 18 项 Swift 核心测试通过，但 iPhone 的 `PhoneThreadView` 报 SwiftUI 类型检查超时。将带 footer 的输入区 Section 改为明确的 header/content/footer 初始化形式后，重新运行全部检查，两个模拟器构建通过。没有更改发送、停止、来源或权限行为。
 
-> BLOCKED: Full Xcode and Swift are required. No Apple build has run.
+## 尚未执行
 
-这不是 Apple 编译失败日志，也不是 Swift 测试失败；工具链不存在，Apple 编译/测试没有运行。
+- 原生界面实际运行、浅深色、Dynamic Type、VoiceOver、交互验收与真实截图。
+- iPhone ↔ Apple Watch 真机链路、后台任务时序、锁屏、断连、回执丢失、重启行为。
+- 安装包签名、真机安装与分发。
+- 真实 Codex Remote 授权、配对、协议兼容、现有 thread 读取或执行。
 
-## 已写好但未运行
+## 结论与边界
 
-- **18 项 Swift XCTest**：编码往返、大小边界、演示来源约束、重复快照 ID、缺失 turn、未来快照、命令时间边界、模式/版本、输入边界、额外字段、复用已有 thread、拒绝未知 thread、重复 ID 幂等与内容变更、运行中重复发送、明确 turn 停止、缺失 turn、刷新不改变会话、未知操作解码失败。
-- Xcode 工程解析与 iOS/watchOS 模拟器构建。
-- SwiftUI 原生界面、浅深色、Dynamic Type、VoiceOver、真实截图。
-- iPhone ↔ Apple Watch 物理链路、后台任务时序、锁屏/断连/回执丢失/重启行为。
-- 真实 Remote 的授权、配对、协议兼容、现有 thread 读取或执行。
+**演示工程已通过云端 Swift 测试和 iPhone/watchOS 模拟器编译。仍不是可连接真实 Remote 的 MVP。** 编译通过不代表 UI 已验收、真机可用或 Remote 已连通。
 
-## 验证能说明什么
-
-源码/结构检查可以发现特定结构错误与已知回归，不能替代 Swift 类型检查、Xcode build 或真机测试。独立静态审查同样不能证明可安装或线上可用。
-
-交付状态：**原生工程与演示实现已编写，云内可运行检查通过，Apple 平台构建与真机验证待做，Remote 直连尚未实现。**
-
-下一步按 `DEVICE_CHECKLIST.md` 在得到授权的 Mac/设备上运行。不把任何一层的通过换算成另一层通过。
+2026-11-04 的 Linux 检查曾因缺少 Apple 工具链而无法执行编译；上面的云端运行补齐的是构建证据，不是其余平台验收。后续步骤见 `DEVICE_CHECKLIST.md`。每次源码变更后，以对应提交的 Actions 结果为准。
