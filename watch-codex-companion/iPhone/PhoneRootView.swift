@@ -22,7 +22,7 @@ struct PhoneRootView: View {
                                                description: Text("刷新以重新获取演示快照。"))
                     }
                     ForEach(activeThreads) { thread in
-                        NavigationLink(value: thread.id) label: {
+                        NavigationLink(value: thread.id) {
                             PhoneActiveSession(thread: thread)
                         }.buttonStyle(.plain)
                     }
@@ -31,7 +31,7 @@ struct PhoneRootView: View {
                             Text("最近会话").font(.title3.weight(.semibold))
                                 .padding(.bottom, 8)
                             ForEach(otherThreads) { thread in
-                                NavigationLink(value: thread.id) label: {
+                                NavigationLink(value: thread.id) {
                                     HStack(spacing: 14) {
                                         Image(systemName: thread.state.symbol)
                                             .font(.title3).foregroundStyle(.secondary)

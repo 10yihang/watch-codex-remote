@@ -92,7 +92,7 @@ class SourceChecks(unittest.TestCase):
             capture.select_device(inventory, 'iOS', ['iPhone'], (17, 0))
     def test_phone_navigation_survives_session_state_changes(self):
         source = (ROOT/'iPhone/PhoneRootView.swift').read_text()
-        self.assertEqual(source.count('NavigationLink(value: thread.id)'), 2)
+        self.assertEqual(source.count('NavigationLink(value: thread.id) {'), 2)
         self.assertIn('.navigationDestination(for: String.self)', source)
         self.assertNotIn('NavigationLink { PhoneThreadView(threadID: thread.id) }', source)
     def test_watch_uses_readable_dark_appearance(self):
