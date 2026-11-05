@@ -1,14 +1,14 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-05T03:49:54Z",
-  "title": "Watch Codex companion: sessions at a glance",
+  "generatedAt": "2026-11-05T04:42:16Z",
+  "title": "Watch Codex companion: frosted sessions proposal",
   "extensions": {
     "native": {
       "platforms": [
         "iOS 17+",
         "watchOS 10+"
       ],
-      "implementation": "SwiftUI; semantic Dynamic Type styles, SF Symbols and native navigation. Values below are observed implementation literals, not shared constants.",
+      "implementation": "SwiftUI; semantic Dynamic Type styles, SF Symbols and native navigation. Values below are observed implementation literals; watchAccent is an explicit shared Watch constant.",
       "sources": [
         "DESIGN.md",
         "Watch/WatchRootView.swift",
@@ -44,19 +44,32 @@
             0.961,
             0.984,
             1
-          ]
+          ],
+          "usage": "Adaptive asset retained on iPhone; Watch uses explicit watchAccent instead."
         },
-        "watchCanvas": "system black canvas; WatchApp forces colorScheme dark",
-        "watchActiveSurface": "Color.accentColor.opacity(0.12)",
-        "watchRecentSurface": "Color.white.opacity(0.07)",
+        "watchCanvas": "LinearGradient: black, watchAccent.opacity(0.16), black; topLeading to bottomTrailing; ignoresSafeArea",
+        "watchActiveSurface": "Material.ultraThinMaterial",
+        "watchRecentSurface": "Material.ultraThinMaterial",
         "phoneCanvas": "UIColor.systemGroupedBackground",
-        "phoneSurface": "UIColor.secondarySystemGroupedBackground",
         "text": [
           "primary",
           "secondary",
           "tertiary"
         ],
-        "error": "Color.red; destructive controls use the native destructive role"
+        "error": "Color.red; destructive controls use the native destructive role",
+        "watchAccent": {
+          "source": "Watch/WatchRootView.swift: watchAccent",
+          "sRGB": [
+            0.424,
+            0.894,
+            0.933,
+            1
+          ],
+          "application": "Direct running-status references and WatchApp .tint(watchAccent).accentColor(watchAccent), with forced dark colorScheme; also used at 16% opacity in the backdrop gradient."
+        },
+        "phoneActiveSurface": "Material.ultraThinMaterial",
+        "phoneConnectionSurface": "Material.thinMaterial",
+        "phoneSecondaryCopy": "Color.primary.opacity(0.65); tertiary chevrons and existing semantic detail-state/count styles unchanged"
       },
       "typography": {
         "family": "system; no custom fonts or fixed line heights",
@@ -101,7 +114,8 @@
           "connectionPadding": 16,
           "connectionContentGap": 12,
           "connectionTextGap": 4,
-          "receiptStackGap": 14
+          "receiptStackGap": 14,
+          "activeAccessibilityHeaderGap": 8
         }
       },
       "shapes": {
@@ -110,28 +124,64 @@
         "phoneActiveRadius": 24,
         "phoneConnectionRadius": 16
       },
-      "depth": "Flat tonal surfaces; no custom shadows, borders or decorative gradients.",
+      "depth": "Native translucent materials, blurred color backdrops and half-point white edge highlights; no custom shadows.",
       "motion": "Native system behavior; no custom animation tokens.",
-      "layout": "Content-sized vertical scroll views; no fixed breakpoint system. Watch uses snapshot order; iPhone groups running sessions before other sessions.",
-      "documentationScope": "Native source extraction only. DESIGN.md is preserved. SwiftUI conventions are recorded here rather than inventing browser HTML/CSS or fixed font metrics.",
-      "verification": "No detector or visual validation was run for this documentation task; no simulator or device result is asserted."
+      "layout": "Content-sized vertical scroll views; no fixed breakpoint system. Watch uses snapshot order; iPhone groups running sessions first. PhoneActiveSession uses AnyLayout with leading VStackLayout(spacing: 8) at accessibility Dynamic Type sizes, HStackLayout and Spacer(minLength: 8) otherwise.",
+      "documentationScope": "Current local glass-proposal SwiftUI sources only; unpublished, not simulator-verified. No HTML/CSS approximations or fixed font metrics.",
+      "verification": "Local proposal only; no simulator verification or final visual, accessibility or contrast QA pass claimed. Fresh builds, protocol tests and rendered-device inspection remain required.",
+      "materials": {
+        "watchSession": "ultraThinMaterial",
+        "phoneActive": "ultraThinMaterial",
+        "phoneConnection": "thinMaterial"
+      },
+      "edges": {
+        "width": 0.5,
+        "color": "white",
+        "watchOpacity": 0.14,
+        "phoneActiveOpacity": 0.3,
+        "phoneConnectionOpacity": 0.22
+      },
+      "phoneBackdrop": {
+        "base": "UIColor.systemGroupedBackground",
+        "accentEllipse": {
+          "color": "Color.accentColor",
+          "opacity": 0.22,
+          "relativeWidth": 1.2,
+          "relativeHeight": 0.6,
+          "blur": 55,
+          "relativeOffsetX": -0.35,
+          "relativeOffsetY": -0.25
+        },
+        "blueEllipse": {
+          "color": "Color.blue",
+          "opacity": 0.12,
+          "relativeWidth": 1,
+          "relativeHeight": 0.5,
+          "blur": 65,
+          "relativeOffsetX": 0.35,
+          "relativeOffsetY": 0.2
+        },
+        "ignoresSafeArea": true,
+        "accessibilityHidden": true
+      },
+      "compatibility": "Native materials supported by Xcode 16.4 and project targets; materials available on iOS 15+ and watchOS 10+. No glassEffect: it requires SDK 26. The iOS 27 reference is visual direction only."
     }
   },
   "components": [
     {
       "name": "Watch session row",
       "kind": "card",
-      "description": "Plain NavigationLink. Running: accent caption2 status and headline title over 12% accent. Other: medium subheadline title over 7% white. Two-line title; one-line project; 12-point inset; 18-point continuous corner. Combine accessibility children and expose state as value."
+      "description": "Plain NavigationLink. Cyan running status and headline title; quieter medium subheadline title for other sessions. All rows use ultraThinMaterial, 12-point inset, 18-point continuous corners and a 0.5-point white edge at 14% opacity. Two-line title; one-line project. Combined accessibility children with state value."
     },
     {
       "name": "iPhone active session",
       "kind": "card",
-      "description": "Plain NavigationLink. Title2 bold title, accent status and action, secondary project and up-to-three-line summary. System secondary grouped surface; 22-point inset; 24-point continuous corner. Combine accessibility children."
+      "description": "Plain NavigationLink. Title2 bold title, accent status/action, primary-at-65%-opacity project and up-to-three-line summary. UltraThinMaterial; 22-point inset; 24-point continuous corner; 0.5-point white edge at 30% opacity. Header stacks vertically with 8-point spacing at accessibility Dynamic Type sizes. Combined accessibility children."
     },
     {
       "name": "iPhone recent session",
       "kind": "custom",
-      "description": "Plain NavigationLink, native status symbol, headline title, secondary project and state, tertiary chevron. No card fill. 15-point vertical padding; inset dividers between rows."
+      "description": "Plain NavigationLink, native status symbol, headline title, project and state in primary at 65% opacity, tertiary chevron. No card fill. 15-point vertical padding; inset dividers between rows."
     },
     {
       "name": "Native navigation",
@@ -147,25 +197,30 @@
       "name": "Demo instruction field",
       "kind": "input",
       "description": "Native TextField in List sections; watch system keyboard/dictation, iPhone multiline range 3...8. 2000-character limit with red error/count; preserve draft. Send disabled for unavailable mutation, running thread, blank or oversized input."
+    },
+    {
+      "name": "iPhone Watch connection card",
+      "kind": "card",
+      "description": "Plain NavigationLink with native Watch symbol, reachability label and tertiary chevron. ThinMaterial; 16-point inset and continuous corner; 0.5-point white edge at 22% opacity. Device reachability is not Remote authorization."
     }
   ],
   "narrative": {
-    "overview": "Native SwiftUI for a Chinese-speaking developer checking existing work on an Apple Watch and companion iPhone. This replaces the original diagnostics-first list.",
+    "overview": "Unpublished native frosted-glass proposal for the existing session-first Watch and iPhone demo. Translucent materials and restrained color backdrops support clear session hierarchy without implying a real Remote connection.",
     "keyCharacteristics": [
       "Session-first hierarchy",
       "Compact explicit demo/disconnected disclosure",
       "Running-session emphasis and quieter recent sessions",
       "System typography and navigation",
-      "Flat tonal surfaces"
+      "Native frosted materials and restrained color backdrops"
     ],
     "dos": [
       "Keep every session and action explicitly simulated.",
       "Keep device reachability distinct from Remote authentication.",
       "Use semantic Dynamic Type and native controls.",
-      "Force the watch dark color scheme so its black canvas uses the dark accent."
+      "Use explicit watchAccent for Watch tint and running status; preserve clear demo/disconnected disclosure and check rendered contrast over materials."
     ],
     "donts": [
-      "Do not add decorative gradients or shadows.",
+      "Do not claim this local proposal is shipped, simulator-verified or implemented with glassEffect.",
       "Do not fabricate progress percentages, login state, host status, completion or live Remote connection.",
       "Do not add a giant disconnected card ahead of the sessions."
     ]

@@ -15,7 +15,7 @@ struct PhoneRootView: View {
                         Spacer()
                         Text("Remote 未连接").font(.subheadline)
                     }
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.primary.opacity(0.65))
 
                     if store.snapshot.threads.isEmpty {
                         ContentUnavailableView("还没有示例会话", systemImage: "text.bubble",
@@ -34,11 +34,11 @@ struct PhoneRootView: View {
                                 NavigationLink(value: thread.id) {
                                     HStack(spacing: 14) {
                                         Image(systemName: thread.state.symbol)
-                                            .font(.title3).foregroundStyle(.secondary)
+                                            .font(.title3).foregroundStyle(Color.primary.opacity(0.65))
                                         VStack(alignment: .leading, spacing: 5) {
                                             Text(thread.title).font(.headline).foregroundStyle(.primary)
                                             Text("\(thread.project) · \(thread.state.label)")
-                                                .font(.subheadline).foregroundStyle(.secondary)
+                                                .font(.subheadline).foregroundStyle(Color.primary.opacity(0.65))
                                         }
                                         Spacer(minLength: 8)
                                         Image(systemName: "chevron.right")
@@ -58,7 +58,7 @@ struct PhoneRootView: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("Apple Watch").font(.subheadline.weight(.semibold))
                                     Text(store.reachable ? "设备链路可达" : "设备暂不可达")
-                                        .font(.caption).foregroundStyle(.secondary)
+                                        .font(.caption).foregroundStyle(Color.primary.opacity(0.65))
                                 }
                                 Spacer()
                                 Image(systemName: "chevron.right")
@@ -66,20 +66,24 @@ struct PhoneRootView: View {
                             }
                             .foregroundStyle(.primary)
                             .padding(16)
-                            .background(Color(uiColor: .secondarySystemGroupedBackground),
+                            .background(.thinMaterial,
                                         in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .strokeBorder(.white.opacity(0.22), lineWidth: 0.5)
+                            }
                         }.buttonStyle(.plain)
                         Text(store.receipt)
-                            .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+                            .font(.caption).foregroundStyle(Color.primary.opacity(0.65)).textSelection(.enabled)
                         Text("快照更新于 \(store.snapshot.generatedAt.formatted(date: .omitted, time: .shortened)) · 所有会话均为示例")
-                            .font(.caption2).foregroundStyle(.secondary)
+                            .font(.caption2).foregroundStyle(Color.primary.opacity(0.65))
                     }
                 }
                 .padding(.horizontal, 24)
                 .padding(.top, 8)
                 .padding(.bottom, 28)
             }
-            .background(Color(uiColor: .systemGroupedBackground))
+            .background { PhoneGlassBackdrop() }
             .navigationTitle("Codex")
             .navigationDestination(for: String.self) { threadID in
                 PhoneThreadView(threadID: threadID)
@@ -96,17 +100,21 @@ struct PhoneRootView: View {
 }
 
 private struct PhoneActiveSession: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let thread: ThreadSummary
     var body: some View {
+        let headerLayout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+            : AnyLayout(HStackLayout())
         VStack(alignment: .leading, spacing: 16) {
-            HStack {
+            headerLayout {
                 Label(thread.state.label, systemImage: thread.state.symbol)
                     .font(.subheadline.weight(.semibold)).foregroundStyle(Color.accentColor)
-                Spacer(minLength: 8)
-                Text(thread.project).font(.caption).foregroundStyle(.secondary)
+                if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 8) }
+                Text(thread.project).font(.caption).foregroundStyle(Color.primary.opacity(0.65))
             }
             Text(thread.title).font(.title2.weight(.bold)).foregroundStyle(.primary)
-            Text(thread.summary).font(.subheadline).foregroundStyle(.secondary)
+            Text(thread.summary).font(.subheadline).foregroundStyle(Color.primary.opacity(0.65))
                 .lineLimit(3).fixedSize(horizontal: false, vertical: true)
             HStack {
                 Text("查看会话").font(.subheadline.weight(.semibold))
@@ -118,9 +126,36 @@ private struct PhoneActiveSession: View {
         }
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(uiColor: .secondarySystemGroupedBackground),
+        .background(.ultraThinMaterial,
                     in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .strokeBorder(.white.opacity(0.3), lineWidth: 0.5)
+        }
         .accessibilityElement(children: .combine)
+    }
+}
+
+// Native materials need a varied backdrop to reveal their translucency.
+private struct PhoneGlassBackdrop: View {
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                Color(uiColor: .systemGroupedBackground)
+                Ellipse()
+                    .fill(Color.accentColor.opacity(0.22))
+                    .frame(width: geometry.size.width * 1.2, height: geometry.size.height * 0.6)
+                    .blur(radius: 55)
+                    .offset(x: -geometry.size.width * 0.35, y: -geometry.size.height * 0.25)
+                Ellipse()
+                    .fill(Color.blue.opacity(0.12))
+                    .frame(width: geometry.size.width, height: geometry.size.height * 0.5)
+                    .blur(radius: 65)
+                    .offset(x: geometry.size.width * 0.35, y: geometry.size.height * 0.2)
+            }
+        }
+        .ignoresSafeArea()
+        .accessibilityHidden(true)
     }
 }
 
@@ -189,7 +224,7 @@ struct ConnectionDetailsView: View {
             Section("当前状态") {
                 Label("Codex Remote 尚未连接", systemImage: "network.slash")
                 Label(store.reachable ? "设备链路可达" : "设备链路暂不可达", systemImage: "iphone.and.arrow.forward")
-                Text(store.linkStatus).font(.caption).foregroundStyle(.secondary)
+                Text(store.linkStatus).font(.caption).foregroundStyle(Color.primary.opacity(0.65))
                 Text("iOS 原生 Remote 授权入口尚未确认，因此这里没有登录按钮，也不会借用桌面 client 或读取桌面 token。")
             }
             Section("可以体验") {

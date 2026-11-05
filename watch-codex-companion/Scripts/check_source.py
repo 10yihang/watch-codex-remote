@@ -95,9 +95,21 @@ class SourceChecks(unittest.TestCase):
         self.assertEqual(source.count('NavigationLink(value: thread.id) {'), 2)
         self.assertIn('.navigationDestination(for: String.self)', source)
         self.assertNotIn('NavigationLink { PhoneThreadView(threadID: thread.id) }', source)
+    def test_native_glass_uses_supported_materials(self):
+        phone = (ROOT/'iPhone/PhoneRootView.swift').read_text()
+        watch = (ROOT/'Watch/WatchRootView.swift').read_text()
+        for source in [phone, watch]:
+            self.assertIn('.background(.ultraThinMaterial', source)
+            self.assertNotIn('.glassEffect(', source)  # Requires a newer SDK than CI.
+        self.assertIn('Color.primary.opacity(0.65)', phone)
+        self.assertIn('AnyLayout(VStackLayout(alignment: .leading, spacing: 8))', phone)
     def test_watch_uses_readable_dark_appearance(self):
         source = (ROOT/'Watch/WatchApp.swift').read_text()
         self.assertIn('.environment(\\.colorScheme, .dark)', source)
+        self.assertIn('.tint(watchAccent).accentColor(watchAccent)', source)
+        watch = (ROOT/'Watch/WatchRootView.swift').read_text()
+        self.assertIn('let watchAccent = Color(red: 0.424, green: 0.894, blue: 0.933)', watch)
+        self.assertNotIn('Color.accentColor', watch)
     def test_background_task_waits_until_session_data_drained(self):
         source = (ROOT/'Watch/WatchApp.swift').read_text()
         self.assertIn('pendingConnectivityTasks.append(connectivityTask)', source)

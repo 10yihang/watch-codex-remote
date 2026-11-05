@@ -1,5 +1,8 @@
 import SwiftUI
 
+// watchOS does not resolve this asset's dark variant reliably. Keep a readable tint.
+let watchAccent = Color(red: 0.424, green: 0.894, blue: 0.933)
+
 struct WatchRootView: View {
     @EnvironmentObject private var store: CompanionStore
     var body: some View {
@@ -43,6 +46,11 @@ struct WatchRootView: View {
                 .padding(.horizontal, 10)
                 .padding(.bottom, 8)
             }
+            .background {
+                LinearGradient(colors: [.black, watchAccent.opacity(0.16), .black],
+                               startPoint: .topLeading, endPoint: .bottomTrailing)
+                    .ignoresSafeArea()
+            }
             .navigationTitle("Codex")
             .navigationBarTitleDisplayMode(.inline)
         }
@@ -55,7 +63,7 @@ private struct WatchSessionRow: View {
         VStack(alignment: .leading, spacing: 7) {
             if thread.state == .running {
                 Label(thread.state.label, systemImage: thread.state.symbol)
-                    .font(.caption2.weight(.medium)).foregroundStyle(Color.accentColor)
+                    .font(.caption2.weight(.medium)).foregroundStyle(watchAccent)
             }
             HStack(alignment: .firstTextBaseline, spacing: 5) {
                 Text(thread.title)
@@ -76,8 +84,12 @@ private struct WatchSessionRow: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(thread.state == .running ? Color.accentColor.opacity(0.12) : Color.white.opacity(0.07),
+        .background(.ultraThinMaterial,
                     in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .strokeBorder(.white.opacity(0.14), lineWidth: 0.5)
+        }
         .accessibilityElement(children: .combine)
         .accessibilityValue(thread.state.label)
     }
@@ -95,7 +107,7 @@ struct WatchThreadView: View {
                 List {
                     Section {
                         Label(thread.state.label, systemImage: thread.state.symbol).font(.caption)
-                            .foregroundStyle(thread.state == .running ? Color.accentColor : .secondary)
+                            .foregroundStyle(thread.state == .running ? watchAccent : .secondary)
                         Text(thread.summary).font(.body)
                     } footer: { Text("演示数据 · Remote 未连接") }
                     Section {
