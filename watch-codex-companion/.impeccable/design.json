@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-05T03:49:54Z",
+  "title": "Watch Codex companion: sessions at a glance",
+  "extensions": {
+    "native": {
+      "platforms": [
+        "iOS 17+",
+        "watchOS 10+"
+      ],
+      "implementation": "SwiftUI; semantic Dynamic Type styles, SF Symbols and native navigation. Values below are observed implementation literals, not shared constants.",
+      "sources": [
+        "DESIGN.md",
+        "Watch/WatchRootView.swift",
+        "iPhone/PhoneRootView.swift",
+        "Watch/WatchApp.swift",
+        "Shared/Assets.xcassets/AccentColor.colorset/Contents.json"
+      ],
+      "units": "points; typography uses semantic styles rather than fixed sizes",
+      "colors": {
+        "accent": {
+          "asset": "AccentColor",
+          "colorSpace": "sRGB",
+          "light": [
+            0,
+            0.353,
+            0.459,
+            1
+          ],
+          "dark": [
+            0.424,
+            0.894,
+            0.933,
+            1
+          ],
+          "lightIncreasedContrast": [
+            0,
+            0.255,
+            0.337,
+            1
+          ],
+          "darkIncreasedContrast": [
+            0.6,
+            0.961,
+            0.984,
+            1
+          ]
+        },
+        "watchCanvas": "system black canvas; WatchApp forces colorScheme dark",
+        "watchActiveSurface": "Color.accentColor.opacity(0.12)",
+        "watchRecentSurface": "Color.white.opacity(0.07)",
+        "phoneCanvas": "UIColor.systemGroupedBackground",
+        "phoneSurface": "UIColor.secondarySystemGroupedBackground",
+        "text": [
+          "primary",
+          "secondary",
+          "tertiary"
+        ],
+        "error": "Color.red; destructive controls use the native destructive role"
+      },
+      "typography": {
+        "family": "system; no custom fonts or fixed line heights",
+        "watchActiveTitle": "headline",
+        "watchRecentTitle": "subheadline.weight(.medium)",
+        "watchActiveStatus": "caption2.weight(.medium)",
+        "watchMetadata": "caption2",
+        "phoneActiveTitle": "title2.weight(.bold)",
+        "phoneRecentTitle": "headline",
+        "phoneSectionTitle": "title3.weight(.semibold)",
+        "phoneActiveStatusAndAction": "subheadline.weight(.semibold)",
+        "phoneSummaryAndRecentMetadata": "subheadline",
+        "phoneReceiptAndConnectionMetadata": "caption",
+        "phoneSnapshotTime": "caption2",
+        "detailSummary": "body",
+        "phoneIdentifiers": "caption.monospaced()"
+      },
+      "spacing": {
+        "watch": {
+          "outerHorizontal": 10,
+          "outerBottom": 8,
+          "rowGap": 10,
+          "rowPadding": 12,
+          "rowContentGap": 7,
+          "titleAndMetadataGap": 5,
+          "disclosureHorizontalInset": 4,
+          "utilityGap": 8,
+          "utilityMinHeight": 44
+        },
+        "phone": {
+          "outerHorizontal": 24,
+          "outerTop": 8,
+          "outerBottom": 28,
+          "sectionGap": 24,
+          "activePadding": 22,
+          "activeContentGap": 16,
+          "activeActionTop": 4,
+          "recentRowVertical": 15,
+          "recentRowGap": 14,
+          "recentTextGap": 5,
+          "recentDividerLeading": 36,
+          "connectionPadding": 16,
+          "connectionContentGap": 12,
+          "connectionTextGap": 4,
+          "receiptStackGap": 14
+        }
+      },
+      "shapes": {
+        "cornerStyle": "continuous RoundedRectangle",
+        "watchSessionRadius": 18,
+        "phoneActiveRadius": 24,
+        "phoneConnectionRadius": 16
+      },
+      "depth": "Flat tonal surfaces; no custom shadows, borders or decorative gradients.",
+      "motion": "Native system behavior; no custom animation tokens.",
+      "layout": "Content-sized vertical scroll views; no fixed breakpoint system. Watch uses snapshot order; iPhone groups running sessions before other sessions.",
+      "documentationScope": "Native source extraction only. DESIGN.md is preserved. SwiftUI conventions are recorded here rather than inventing browser HTML/CSS or fixed font metrics.",
+      "verification": "No detector or visual validation was run for this documentation task; no simulator or device result is asserted."
+    }
+  },
+  "components": [
+    {
+      "name": "Watch session row",
+      "kind": "card",
+      "description": "Plain NavigationLink. Running: accent caption2 status and headline title over 12% accent. Other: medium subheadline title over 7% white. Two-line title; one-line project; 12-point inset; 18-point continuous corner. Combine accessibility children and expose state as value."
+    },
+    {
+      "name": "iPhone active session",
+      "kind": "card",
+      "description": "Plain NavigationLink. Title2 bold title, accent status and action, secondary project and up-to-three-line summary. System secondary grouped surface; 22-point inset; 24-point continuous corner. Combine accessibility children."
+    },
+    {
+      "name": "iPhone recent session",
+      "kind": "custom",
+      "description": "Plain NavigationLink, native status symbol, headline title, secondary project and state, tertiary chevron. No card fill. 15-point vertical padding; inset dividers between rows."
+    },
+    {
+      "name": "Native navigation",
+      "kind": "nav",
+      "description": "NavigationStack and NavigationLink; watch inline Codex title, iPhone native large root title and inline detail titles. Receipts and diagnostics remain below sessions or on connection screens."
+    },
+    {
+      "name": "Native actions",
+      "kind": "button",
+      "description": "Watch bordered refresh/source controls with minimum height 44 and explicit accessibility labels; iPhone toolbar refresh and pull-to-refresh. Refresh disables while busy. Stop uses native destructive role and confirmationDialog."
+    },
+    {
+      "name": "Demo instruction field",
+      "kind": "input",
+      "description": "Native TextField in List sections; watch system keyboard/dictation, iPhone multiline range 3...8. 2000-character limit with red error/count; preserve draft. Send disabled for unavailable mutation, running thread, blank or oversized input."
+    }
+  ],
+  "narrative": {
+    "overview": "Native SwiftUI for a Chinese-speaking developer checking existing work on an Apple Watch and companion iPhone. This replaces the original diagnostics-first list.",
+    "keyCharacteristics": [
+      "Session-first hierarchy",
+      "Compact explicit demo/disconnected disclosure",
+      "Running-session emphasis and quieter recent sessions",
+      "System typography and navigation",
+      "Flat tonal surfaces"
+    ],
+    "dos": [
+      "Keep every session and action explicitly simulated.",
+      "Keep device reachability distinct from Remote authentication.",
+      "Use semantic Dynamic Type and native controls.",
+      "Force the watch dark color scheme so its black canvas uses the dark accent."
+    ],
+    "donts": [
+      "Do not add decorative gradients or shadows.",
+      "Do not fabricate progress percentages, login state, host status, completion or live Remote connection.",
+      "Do not add a giant disconnected card ahead of the sessions."
+    ]
+  }
+}

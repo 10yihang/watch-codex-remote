@@ -2,6 +2,7 @@
 """Source/project checks only. Never a substitute for Swift compilation or device tests."""
 from pathlib import Path
 import hashlib
+import importlib.util
 import json
 import plistlib
 import re
@@ -78,6 +79,25 @@ class SourceChecks(unittest.TestCase):
             self.assertIn('Remote',text)
         self.assertIn('isOn: $store.usePhone).disabled(store.busy)',watch)
         self.assertNotIn('.font(.system(size:',phone+watch)
+    def test_capture_uses_sdk_compatible_runtime(self):
+        spec = importlib.util.spec_from_file_location('capture', ROOT/'Scripts/capture_simulators.py')
+        capture = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(capture)
+        device = {'isAvailable': True, 'name': 'iPhone 16 Pro Max'}
+        inventory = {'com.apple.CoreSimulator.SimRuntime.iOS-18-5': [dict(device, udid='supported')],
+                     'com.apple.CoreSimulator.SimRuntime.iOS-26-2': [dict(device, udid='too-new')]}
+        selected = capture.select_device(inventory, 'iOS', ['iPhone'], (18, 5))
+        self.assertEqual(selected['udid'], 'supported')
+        with self.assertRaises(RuntimeError):
+            capture.select_device(inventory, 'iOS', ['iPhone'], (17, 0))
+    def test_phone_navigation_survives_session_state_changes(self):
+        source = (ROOT/'iPhone/PhoneRootView.swift').read_text()
+        self.assertEqual(source.count('NavigationLink(value: thread.id)'), 2)
+        self.assertIn('.navigationDestination(for: String.self)', source)
+        self.assertNotIn('NavigationLink { PhoneThreadView(threadID: thread.id) }', source)
+    def test_watch_uses_readable_dark_appearance(self):
+        source = (ROOT/'Watch/WatchApp.swift').read_text()
+        self.assertIn('.environment(\\.colorScheme, .dark)', source)
     def test_background_task_waits_until_session_data_drained(self):
         source = (ROOT/'Watch/WatchApp.swift').read_text()
         self.assertIn('pendingConnectivityTasks.append(connectivityTask)', source)

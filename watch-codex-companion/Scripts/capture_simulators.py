@@ -24,12 +24,15 @@ def run(*args, timeout=180):
     return result.stdout
 
 
-def select_device(devices, platform, preferred):
+def select_device(devices, platform, preferred, sdk_version):
     candidates = []
     for runtime, entries in devices.items():
         if f'.{platform}-' not in runtime:
             continue
         version = tuple(map(int, re.findall(r'\d+', runtime.split(f'.{platform}-')[-1])))
+        # A runner may list runtimes newer than its selected Xcode can reliably launch.
+        if version > sdk_version:
+            continue
         for device in entries:
             if device.get('isAvailable') and (platform != 'iOS' or device['name'].startswith('iPhone')):
                 preference = next((len(preferred) - i for i, word in enumerate(preferred)
@@ -47,13 +50,15 @@ def capture(device, app, bundle, filename, appearance=None, content_size=None):
         run('xcrun', 'simctl', 'boot', udid)
         device['state'] = 'Booted'
     run('xcrun', 'simctl', 'bootstatus', udid, '-b', timeout=480)
-    run('xcrun', 'simctl', 'install', udid, app)
+    if not device.get('installed'):
+        run('xcrun', 'simctl', 'install', udid, app)
+        device['installed'] = True
     if appearance:
         run('xcrun', 'simctl', 'ui', udid, 'appearance', appearance)
     if content_size:
         run('xcrun', 'simctl', 'ui', udid, 'content_size', content_size)
     launch = run('xcrun', 'simctl', 'launch', '--terminate-running-process', udid, bundle,
-                 '-AppleLanguages', '(zh-Hans)', '-AppleLocale', 'zh_CN')
+                 '-AppleLanguages', '(zh-Hans)', '-AppleLocale', 'zh_CN', timeout=300)
     time.sleep(10)  # Allow first-launch SwiftUI layout and system animations to finish.
     path = OUTPUT / filename
     run('xcrun', 'simctl', 'io', udid, 'screenshot', '--type=png', path)
@@ -67,9 +72,11 @@ def capture(device, app, bundle, filename, appearance=None, content_size=None):
 def main():
     inventory = json.loads(run('xcrun', 'simctl', 'list', 'devices', 'available', '--json'))
     (OUTPUT / 'simulator-inventory.json').write_text(json.dumps(inventory, indent=2))
-    phone = select_device(inventory['devices'], 'iOS', ['iPhone 16 Pro Max', 'iPhone 16 Pro', 'iPhone'])
-    watch = select_device(inventory['devices'], 'watchOS', ['Ultra 2', '46mm', '45mm', 'Apple Watch'])
-    small_watch = select_device(inventory['devices'], 'watchOS', ['42mm', '41mm', '40mm'])
+    phone_sdk = tuple(map(int, run('xcrun', '--sdk', 'iphonesimulator', '--show-sdk-version').strip().split('.')))
+    watch_sdk = tuple(map(int, run('xcrun', '--sdk', 'watchsimulator', '--show-sdk-version').strip().split('.')))
+    phone = select_device(inventory['devices'], 'iOS', ['iPhone 16 Pro Max', 'iPhone 16 Pro', 'iPhone'], phone_sdk)
+    watch = select_device(inventory['devices'], 'watchOS', ['Ultra 2', '46mm', '45mm', 'Apple Watch'], watch_sdk)
+    small_watch = select_device(inventory['devices'], 'watchOS', ['42mm', '41mm', '40mm'], watch_sdk)
     products = ROOT / '.build' / 'apple' / 'Build' / 'Products'
     phone_app = products / 'Debug-iphonesimulator' / 'WatchCodexPhone.app'
     watch_app = products / 'Debug-watchsimulator' / 'WatchCodexWatch.app'
