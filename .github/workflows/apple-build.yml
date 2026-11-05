@@ -43,6 +43,21 @@ jobs:
           set -o pipefail
           mkdir -p build-logs
           bash watch-codex-companion/Scripts/verify_apple.sh 2>&1 | tee build-logs/apple-build.log
+      - name: Capture actual demo simulator screens
+        shell: bash
+        run: |
+          set -o pipefail
+          python3 watch-codex-companion/Scripts/capture_simulators.py 2>&1 | tee build-logs/simulator-capture.log
+      - name: Save simulator screenshots and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: simulator-demo-screenshots
+          path: |
+            watch-codex-companion/.build/screenshots/
+            build-logs/simulator-capture.log
+          retention-days: 7
+          if-no-files-found: warn
       - name: Save build log
         if: always()
         uses: actions/upload-artifact@v4
