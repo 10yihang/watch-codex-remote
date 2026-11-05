@@ -16,7 +16,8 @@ def obj(key, isa, **fields):
 def rawdict(fields): return '{ ' + ' '.join(f'{k} = {v};' for k,v in fields.items()) + ' }'
 
 shared = ['Shared/Core.swift', 'Shared/Connectivity.swift', 'Shared/CompanionStore.swift']
-sources = {'Phone': shared + ['iPhone/PhoneApp.swift', 'iPhone/PhoneRootView.swift'],
+remote = ['Shared/RemoteSigning.swift', 'Shared/RemoteRelay.swift', 'Shared/RemoteAPI.swift']
+sources = {'Phone': shared + remote + ['iPhone/PhoneApp.swift', 'iPhone/PhoneRootView.swift', 'iPhone/RemoteDeviceKey.swift', 'iPhone/RemoteDiagnostics.swift'],
            'Watch': shared + ['Watch/WatchApp.swift', 'Watch/WatchRootView.swift']}
 for source in sorted(set(sum(sources.values(), []))):
     obj(source, 'PBXFileReference', lastKnownFileType='sourcecode.swift', path=q(source), sourceTree=q('<group>'))

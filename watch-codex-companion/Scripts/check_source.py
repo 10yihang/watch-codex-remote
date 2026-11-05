@@ -31,7 +31,7 @@ class SourceChecks(unittest.TestCase):
         for source in re.findall(r'path = "([^"]+\.swift)";', self.project):
             self.assertTrue((ROOT/source).is_file(), source)
         self.assertEqual(self.project.count('isa = PBXSourcesBuildPhase;'), 2)
-        self.assertEqual(self.project.count('isa = PBXBuildFile;'), 13)  # 10 source + 2 assets + 1 embed
+        self.assertEqual(self.project.count('isa = PBXBuildFile;'), 18)  # 15 source + 2 assets + 1 embed
     def test_companion_bundle_identifiers_match(self):
         watch = plistlib.loads((ROOT/'Watch/Info.plist').read_bytes())
         self.assertTrue(watch['WKApplication'])
@@ -51,11 +51,32 @@ class SourceChecks(unittest.TestCase):
             for ref in refs:
                 self.assertIn(ref.attrib['BlueprintIdentifier']+' = { isa = PBXNativeTarget;',self.project)
                 self.assertEqual(ref.attrib['BuildableName'],f'WatchCodex{name}.app')
-    def test_no_remote_auth_network_or_credential_implementation(self):
-        sources = '\n'.join(path.read_text() for path in ROOT.glob('**/*.swift'))
-        for forbidden in ['URLSession', 'ASWebAuthenticationSession', 'SecItemAdd', 'SecItemCopyMatching',
-                          'SecureEnclave.P256', 'auth.json', 'remote_control_token', 'client_id=', 'wss://']:
+    def test_remote_implementation_cannot_borrow_desktop_auth(self):
+        sources = '\n'.join(path.read_text() for folder in ['Shared', 'iPhone', 'Watch'] for path in (ROOT/folder).glob('*.swift'))
+        for forbidden in ['auth.json', 'app_EMoamEEZ73f0CkXaXp7hrann', 'ASWebAuthenticationSession',
+                          'UserDefaults.standard', 'refresh_token', 'NSAllowsArbitraryLoads']:
             self.assertNotIn(forbidden,sources)
+        ui = '\n'.join((ROOT/p).read_text() for p in ['iPhone/PhoneApp.swift', 'iPhone/PhoneRootView.swift', 'Shared/CompanionStore.swift'])
+        for forbidden in ['RemoteAPI(', 'RemoteRelay(', 'RemoteDeviceKey.create(']:
+            self.assertNotIn(forbidden, ui)
+    def test_remote_transport_is_read_only_and_redirects_are_denied(self):
+        relay = (ROOT/'Shared/RemoteRelay.swift').read_text()
+        api = (ROOT/'Shared/RemoteAPI.swift').read_text()
+        for source in [relay, api]:
+            self.assertIn('completionHandler(nil)', source)
+            self.assertIn('URLSessionConfiguration.ephemeral', source)
+        for forbidden in ['"thread/start"', '"thread/fork"', '"turn/start"', '"turn/interrupt"']:
+            self.assertNotIn(forbidden, relay)
+        self.assertIn('maximumMessageSize', relay)
+        self.assertIn('outcomeUnknown', relay)
+        self.assertIn('guard data.count < Self.maxResponseBytes', api)
+    def test_device_key_guardrails(self):
+        subprocess.run([sys.executable, str(ROOT/'Scripts/check_device_key.py')], check=True, capture_output=True)
+    def test_new_native_remote_tests_are_in_swift_package(self):
+        package = (ROOT/'Package.swift').read_text()
+        for name in ['RemoteSigning', 'RemoteRelay', 'RemoteAPI']:
+            self.assertIn(f'"{name}.swift"', package)
+            self.assertTrue((ROOT/f'Tests/CompanionCoreTests/{name}Tests.swift').is_file())
     def test_commands_are_not_background_queued(self):
         self.assertIn('session.isReachable', self.transport)
         self.assertIn('session.activationState == .activated', self.transport)

@@ -219,22 +219,38 @@ struct PhoneThreadView: View {
 
 struct ConnectionDetailsView: View {
     @EnvironmentObject private var store: CompanionStore
+    @State private var diagnostic = "尚未运行本机协议检查。"
     var body: some View {
         List {
             Section("当前状态") {
                 Label("Codex Remote 尚未连接", systemImage: "network.slash")
                 Label(store.reachable ? "设备链路可达" : "设备链路暂不可达", systemImage: "iphone.and.arrow.forward")
                 Text(store.linkStatus).font(.caption).foregroundStyle(Color.primary.opacity(0.65))
-                Text("iOS 原生 Remote 授权入口尚未确认，因此这里没有登录按钮，也不会借用桌面 client 或读取桌面 token。")
+                Text("仍缺少获准的 iOS Remote 登录配置。公开的第三方 ChatGPT 登录不等于 Remote 控制权限，因此真实连接保持关闭。")
             }
             Section("可以体验") {
                 Label("三个已有示例会话", systemImage: "text.bubble")
                 Label("本机发送与明确 turn 的停止演示", systemImage: "hand.tap")
                 Label("通过 WatchConnectivity 交换演示快照", systemImage: "applewatch")
             }
-            Section("尚待验证") {
-                Text("获准的 iOS 授权入口 → 明确确认密钥与控制器授权 → 指定已有主机的只读联调 → 指定 thread 的真实指令。")
-                Text("本工程不登录、不 enroll、不配对、不创建持久密钥、不打开 Remote WebSocket。")
+            Section("已写入原生连接层 · 尚未联调") {
+                Label("设备挑战签名与令牌绑定校验", systemImage: "signature")
+                Label("Secure Enclave 密钥保存与签名", systemImage: "lock.shield")
+                Label("注册、会话续期、配对与撤销请求", systemImage: "link")
+                Label("Relay 收发与已有会话只读访问", systemImage: "network")
+                Text("这些组件尚未用于你的账号或主机。设备密钥不会自动创建，真实会话也不会混入演示列表。")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("本机协议检查") {
+                Button("检查签名与协议编码", systemImage: "checkmark.shield") {
+                    do { diagnostic = try RemoteDiagnostics.run() }
+                    catch { diagnostic = "本机协议检查失败。请保留此版本并查看构建测试；没有发起真实连接。" }
+                }
+                Text(diagnostic).font(.caption).accessibilityIdentifier("remote-diagnostic-result")
+            }
+            Section("下一步") {
+                Text("获准的 Remote OAuth 客户端与 iOS 回调 → 你确认设备授权 → 指定主机的只读联调 → 指定已有会话的真实指令。")
+                Text("登录、配对和真实指令尚不可用。不会粘贴桌面 token、冒用桌面客户端，或在主机加装桥接服务。")
             }
         }.navigationTitle("连接与边界").navigationBarTitleDisplayMode(.inline)
     }

@@ -1,5 +1,7 @@
 # 验证报告
 
+> 以下为历史演示版本的结果，不验证本次新原生 Remote 代码。本次状态见 [REMOTE_IMPLEMENTATION.md](REMOTE_IMPLEMENTATION.md)：源码检查和 Node 测试通过，Swift/Xcode 与真实连接仍未运行。
+
 验证日期：2026-11-05（UTC）。最终功能修复源码：`9a30cee10bb193bc01055efec0b38fd32ff60cfa`。
 
 [GitHub Actions 成功记录](https://github.com/10yihang/watch-codex-remote/actions/runs/41960076332) · [完整 Apple 构建日志](https://github.com/10yihang/watch-codex-remote/actions/runs/41960076332/artifacts/13385012340)（artifact 保留至 2026-11-12）。

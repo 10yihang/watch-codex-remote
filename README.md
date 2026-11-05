@@ -2,7 +2,9 @@
 
 Native SwiftUI iPhone and Apple Watch companion prototype, plus an offline protocol probe.
 
-**Current status: demo-only. Real Codex Remote authentication, pairing and existing-session access are not implemented or verified.**
+**Current status: demo UI plus an experimental native connection layer. Live authentication and connectivity are not available or verified.**
+
+The new Swift layer implements device signing, Secure Enclave key storage, enrollment/pairing HTTP requests and read-only relay access to existing threads. It stays inactive until an approved app-specific Remote authorization flow exists. See [implementation, blocker and validation status](watch-codex-companion/Docs/REMOTE_IMPLEMENTATION.md). This candidate has not yet passed an Apple build.
 
 ## Project
 
@@ -15,12 +17,12 @@ Open `watch-codex-companion/WatchCodex.xcodeproj` with Xcode 16 or newer. The ta
 
 The `Apple simulator build` workflow uses standard GitHub-hosted Ubuntu and `macos-15` runners. It runs on pushes to `main`/`master`, pull requests and manual dispatch:
 
-1. Run 16 source/project checks and 20 offline Node.js protocol tests.
-2. Run 18 Swift core XCTest cases.
+1. Run source/project guardrails and 20 offline Node.js protocol tests.
+2. Run Swift core and new native Remote XCTest cases.
 3. Build the iPhone and Watch simulator apps with signing disabled.
 4. Retain the Apple build log for seven days.
 
-The workflow has read-only repository permissions, does not use repository secrets, and does not enroll devices, sign in, pair hosts, sign builds or install on physical devices. A passing build does not verify UI appearance, iPhone lock-screen operation, WatchConnectivity on devices or real Remote compatibility. Cloud verification passed on 2026-11-05: 16 source checks, 20 offline protocol tests, 18 Swift tests and both simulator builds ([verified run](https://github.com/10yihang/watch-codex-remote/actions/runs/41960076332)). See `watch-codex-companion/Docs/TEST_REPORT.md` for the evidence and remaining checks; use each commit’s workflow run for its current result.
+The workflow has read-only repository permissions, does not use repository secrets, and does not enroll devices, sign in, pair hosts, sign builds or install on physical devices. A passing build does not verify UI appearance, iPhone lock-screen operation, WatchConnectivity on devices or real Remote compatibility. An earlier demo-only revision passed on 2026-11-05 ([historical run](https://github.com/10yihang/watch-codex-remote/actions/runs/41960076332)); that result does not cover this candidate's new connection layer. Use the workflow run for the exact commit being tested.
 
 To run the equivalent checks on a Mac with Xcode selected:
 

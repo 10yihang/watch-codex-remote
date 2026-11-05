@@ -2,7 +2,7 @@
 
 **真实 SwiftUI iPhone + watchOS 工程，当前只有明确标注的演示能力。不是已连通 Codex Remote 的 MVP。**
 
-本包延续上一阶段离线协议探针，新增原生双 Target 工程、交互界面、WatchConnectivity 演示传输以及可在 Swift 工具链运行的核心测试。真实 Remote 授权入口尚未确认，默认始终显示“Remote 未连接”。
+本工程已继续加入原生设备签名、Secure Enclave 密钥提供器、注册/配对 HTTP 与已有会话只读 relay。独立 iOS Remote 授权入口仍未确认，因此这些连接组件保持未启用，界面始终显示“Remote 未连接”。详见 [连接实现与验收门槛](Docs/REMOTE_IMPLEMENTATION.md)。
 
 ## 打开
 
@@ -10,9 +10,9 @@
 
 - `WatchCodexPhone`：iOS 17+ 的 iPhone companion，嵌入 Watch App。
 - `WatchCodexWatch`：watchOS 10+ 的现代单 Target Watch App，无旧式 extension target。
-- `Package.swift`：独立纯 Foundation 核心与 18 项 XCTest，可运行 `swift test`。
+- `Package.swift`：演示核心及原生 Remote 协议测试，可在 Apple Swift 工具链运行 `swift test`。
 
-推荐使用安装了 iOS/watchOS Simulator SDK 的 Xcode 16 或更新版本。已于 2026-11-05 在 GitHub 云端 Xcode 16.4 / Swift 6.1.2 通过 18 项核心测试、工程加载及 iPhone/watchOS 模拟器构建：[构建记录](https://github.com/10yihang/watch-codex-remote/actions/runs/41960076332)。**尚未运行模拟器 UI 或真机测试，也没有接入真实 Remote。**
+推荐使用安装了 iOS/watchOS Simulator SDK 的 Xcode 16 或更新版本。旧演示版曾通过云端 Swift/Xcode 检查：[历史记录](https://github.com/10yihang/watch-codex-remote/actions/runs/41960076332)。**本次新连接代码尚未进行 Swift 编译、Xcode 构建、原生运行或真实 Remote 验证。** 旧提交的通过记录不能代替本次验证。
 
 一次运行所有 Apple 构建前检查：
 
@@ -35,9 +35,9 @@ bash Scripts/verify_apple.sh
 
 ## 明确没有做的事
 
-没有真实 Remote HTTP/WebSocket、账号登录、桌面 token/`auth.json` 导入、desktop client 冒用、设备持久密钥、enroll/pair、Mac 访问或真实指令发送。没有建立新 thread/fork，也没有覆盖 thread 的权限、sandbox、模型或工作目录。
+尚未实现获准的 iOS 账号登录流程、真实会话 UI/Watch 接入或真实指令发送。HTTP/WebSocket、设备密钥和 enroll/pair 已写入原生代码，但从未用于真实账号或主机。没有桌面 token 导入、desktop client 冒用、自动密钥创建、自动注册、Mac 访问、新 thread/fork 或权限覆盖。
 
-`Shared/Core.swift` 定义的是本工程自己的 **Watch ↔ iPhone 演示协议**，不冒充 Codex Remote relay 协议。原探针仍在相邻 `watch-codex-probe` 目录；本交付 ZIP 同时包含其原始副本供对照。该探针的签名 golden tests 通过，不代表 Swift 已实现签名或 iOS 已获授权。
+`Shared/Core.swift` 仍然只定义 **Watch ↔ iPhone 演示协议**，不混用真实 relay。`RemoteSigning.swift` 与 `RemoteRelay.swift` 独立实现原生协议层；Node golden tests 通过不代表这些 Swift 代码已经编译或 iOS 已获授权。
 
 ## 文件
 
@@ -45,7 +45,9 @@ bash Scripts/verify_apple.sh
 - `Shared/Connectivity.swift`：真实 WatchConnectivity API，最新快照与即时请求/回执。
 - `Shared/CompanionStore.swift`：界面状态、明确来源、未知结果和手动刷新。
 - `iPhone/`、`Watch/`：SwiftUI App 与界面，现代 watchOS 生命周期处理。
-- `Tests/CompanionCoreTests/`：18 项 Swift XCTest，已在 GitHub 云端运行并全部通过。
+- `Shared/RemoteAPI.swift`、`RemoteRelay.swift`、`RemoteSigning.swift`：原生 HTTP、只读 WebSocket 和签名组件。
+- `iPhone/RemoteDeviceKey.swift`：需明确调用的 Secure Enclave/Keychain 设备密钥提供器。
+- `Tests/CompanionCoreTests/`：原有演示测试及新增原生协议测试；本次最终版本尚未执行 Swift 测试。
 - `Scripts/check_source.py`：可在 Linux 执行的结构检查，不是 Swift 编译器。
 - `Scripts/generate_project.py`：无外部依赖的确定性工程生成器；日常直接打开已生成工程即可。修改过 bundle ID/签名后不要直接重跑生成器，否则会回到模板默认值。
 - `Docs/TEST_REPORT.md`、`Docs/DEVICE_CHECKLIST.md`：已做检查与待做验收分开记录。
