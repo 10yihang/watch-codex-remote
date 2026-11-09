@@ -7,6 +7,9 @@ final class CompanionConnectivity: NSObject, WCSessionDelegate {
     var onStatus: ((Bool, String) -> Void)?
     var onSnapshot: ((Snapshot) -> Void)?
     var onCommand: ((Command) -> Reply)?
+    var onLiveSnapshot: ((LiveSnapshot) -> Void)?
+    var onLiveCommand: ((LiveCommand, @escaping (LiveReply) -> Void) -> Void)?
+    private var context: [String: Any] = [:]
     private var session: WCSession?
 
     func activate() {
@@ -18,8 +21,13 @@ final class CompanionConnectivity: NSObject, WCSessionDelegate {
     }
     func publish(_ snapshot: Snapshot) {
         guard let session, session.activationState == .activated else { return }
-        do { try session.updateApplicationContext([Wire.key: Wire.encode(snapshot)]) }
+        do { context[Wire.key] = try Wire.encode(snapshot); try updateContext(session) }
         catch { onStatus?(session.isReachable, "快照同步失败：\(error.localizedDescription)") }
+    }
+    private func updateContext(_ session: WCSession) throws {
+        let bytes = try PropertyListSerialization.data(fromPropertyList: context, format: .binary, options: 0)
+        guard bytes.count <= 60 * 1024 else { throw WireError.invalid("设备快照过大，未发送") }
+        try session.updateApplicationContext(context)
     }
     func send(_ command: Command, completion: @escaping (Result<Reply, Error>) -> Void) {
         guard let session, session.activationState == .activated, session.isReachable else {
@@ -41,6 +49,32 @@ final class CompanionConnectivity: NSObject, WCSessionDelegate {
             })
         } catch { completion(.failure(error)) }
     }
+    func publishLive(_ snapshot: LiveSnapshot) {
+        guard let session, session.activationState == .activated else { return }
+        do {
+            context[LiveWire.key] = try LiveWire.encode(snapshot)
+            try updateContext(session)
+        } catch { onStatus?(session.isReachable, "真实快照同步失败") }
+    }
+    func sendLive(_ command: LiveCommand, completion: @escaping (Result<LiveReply, Error>) -> Void) {
+        guard let session, session.activationState == .activated, session.isReachable else {
+            completion(.failure(LiveWireError.unreachable)); return
+        }
+        do {
+            try command.validate()
+            session.sendMessage([LiveWire.key: try LiveWire.encode(command)], replyHandler: { message in
+                let result = Result { () throws -> LiveReply in
+                    guard let data = message[LiveWire.key] as? Data else { throw LiveWireError.invalid }
+                    let reply = try LiveWire.decode(LiveReply.self, from: data)
+                    guard reply.requestID == command.id else { throw LiveWireError.invalid }
+                    if reply.state == .succeeded, reply.snapshot.binding != command.binding { throw LiveWireError.invalid }
+                    try reply.snapshot.validate()
+                    return reply
+                }
+                DispatchQueue.main.async { completion(result) }
+            }, errorHandler: { error in DispatchQueue.main.async { completion(.failure(error)) } })
+        } catch { completion(.failure(error)) }
+    }
     private func report(_ session: WCSession, error: Error? = nil) {
         DispatchQueue.main.async { [weak self] in
             let active = session.activationState == .activated
@@ -50,6 +84,11 @@ final class CompanionConnectivity: NSObject, WCSessionDelegate {
         }
     }
     private func receive(_ context: [String: Any]) {
+        if let data = context[LiveWire.key] as? Data,
+           let snapshot = try? LiveWire.decode(LiveSnapshot.self, from: data),
+           (try? snapshot.validate()) != nil {
+            DispatchQueue.main.async { [weak self] in self?.onLiveSnapshot?(snapshot) }
+        }
         guard let data = context[Wire.key] as? Data else { return }
         do {
             let snapshot = try Wire.decode(Snapshot.self, from: data)
@@ -69,6 +108,21 @@ final class CompanionConnectivity: NSObject, WCSessionDelegate {
     func sessionReachabilityDidChange(_ session: WCSession) { report(session) }
     func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) { receive(applicationContext) }
     func session(_ session: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
+        if message[LiveWire.key] != nil {
+            guard message[Wire.key] == nil, let data = message[LiveWire.key] as? Data,
+                  let command = try? LiveWire.decode(LiveCommand.self, from: data),
+                  (try? command.validate()) != nil else {
+                replyHandler(["error": "Invalid live request"]); return
+            }
+            DispatchQueue.main.async { [weak self] in
+                guard let handler = self?.onLiveCommand else { replyHandler(["error": "Live handler unavailable"]); return }
+                handler(command) { reply in
+                    guard let data = try? LiveWire.encode(reply) else { replyHandler(["error": "Invalid live reply"]); return }
+                    replyHandler([LiveWire.key: data])
+                }
+            }
+            return
+        }
         guard let data = message[Wire.key] as? Data, let command = try? Wire.decode(Command.self, from: data) else {
             replyHandler(["error": "Invalid demo request"]); return
         }

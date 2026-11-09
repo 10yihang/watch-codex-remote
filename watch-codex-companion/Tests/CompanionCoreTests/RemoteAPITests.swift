@@ -102,4 +102,20 @@ final class RemoteAPITests: XCTestCase {
             XCTAssertThrowsError(try RemoteAPI.validateEnrollmentStart(value, authorization: authorization, refresh: false, nowEpoch: now))
         }
     }
+    func testFinishEnrollmentHasNoRequiredControllerToken() throws {
+        let json = #"{"account_user_id":"account-user","client_id":"client-id","scopes":["remote_control_controller_websocket"]}"#
+        let finish = try JSONDecoder().decode(RemoteEnrollmentFinish.self, from: Data(json.utf8))
+        let record = RemoteEnrollmentRecord(accountUserId: "account-user", algorithm: "ecdsa_p256_sha256", clientId: "client-id", keyId: "key", protectionClass: "hardware_secure_enclave", publicKeySpkiDerBase64: "test")
+        XCTAssertNoThrow(try finish.validate(record: record))
+        var other = record; other.clientId = "another-controller"
+        XCTAssertThrowsError(try finish.validate(record: other))
+    }
+    func testEnrollmentAcceptsOnlyExplicitTokenIdentityAlias() throws {
+        let start = try JSONDecoder().decode(RemoteEnrollmentStart.self, from: Data(enrollmentJSON.utf8))
+        let alias = RemoteAccountAuthorization(accessToken: "synthetic-token", accountID: "workspace-id", accountUserID: "different-primary", tokenUserID: "account-user")
+        XCTAssertNoThrow(try RemoteAPI.validateEnrollmentStart(start, authorization: alias, refresh: false, nowEpoch: now))
+        let unrelated = RemoteAccountAuthorization(accessToken: "synthetic-token", accountID: "workspace-id", accountUserID: "different-primary", tokenUserID: "unrelated")
+        XCTAssertThrowsError(try RemoteAPI.validateEnrollmentStart(start, authorization: unrelated, refresh: false, nowEpoch: now))
+    }
+
 }

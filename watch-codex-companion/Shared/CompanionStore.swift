@@ -8,21 +8,28 @@ final class CompanionStore: ObservableObject {
     @Published private(set) var receipt = "所有内容均为演示。Remote 尚未连接。"
     @Published private(set) var busy = false
     @Published var usePhone = false { didSet { switchSource() } }
-    private var engine = DemoEngine()
-    private let connectivity = CompanionConnectivity()
+    private var engine: DemoEngine
+    private let connectivity: CompanionConnectivity
+    let live: LiveCompanionStore
     private var phoneSnapshot: Snapshot?
     private var pendingID: UUID?
     private var uncertainMutation = false
 
     init() {
+        let engine = DemoEngine()
+        self.engine = engine
         snapshot = engine.snapshot
+        let connectivity = CompanionConnectivity()
+        self.connectivity = connectivity
+        live = LiveCompanionStore(connectivity: connectivity)
         connectivity.onStatus = { [weak self] reachable, status in
             guard let self else { return }
             self.reachable = reachable; self.linkStatus = status
+            self.live.updateReachable(reachable)
         }
         #if os(iOS)
         connectivity.onActivated = { [weak self] in
-            guard let self else { return }; self.connectivity.publish(self.snapshot)
+            guard let self else { return }; self.connectivity.publish(self.snapshot); self.live.publish()
         }
         #endif
         connectivity.onSnapshot = { [weak self] snapshot in

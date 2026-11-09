@@ -43,7 +43,7 @@ jobs:
           set -o pipefail
           mkdir -p build-logs
           bash watch-codex-companion/Scripts/verify_apple.sh 2>&1 | tee build-logs/apple-build.log
-      - name: Capture actual demo simulator screens
+      - name: Capture unconnected setup simulator screens
         shell: bash
         run: |
           set -o pipefail
@@ -52,7 +52,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: simulator-demo-screenshots
+          name: simulator-setup-screenshots
           path: |
             watch-codex-companion/.build/screenshots/
             build-logs/simulator-capture.log

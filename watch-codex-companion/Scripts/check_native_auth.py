@@ -15,28 +15,27 @@ class NativeAuthSourceChecks(unittest.TestCase):
         self.oauth = self.auth['CodexPlanOAuth.swift']
         self.callback = self.auth['CodexOAuthCallbackServer.swift']
         self.store = self.auth['CodexPlanTokenStore.swift']
-    def test_configuration_is_disabled_and_empty(self):
+    def test_configuration_is_explicitly_experimental(self):
         info = plistlib.loads((ROOT/'iPhone/Info.plist').read_bytes())
-        self.assertIs(info['CodexOAuthEnabled'], False)
-        self.assertEqual(info['CodexOAuthClientID'], '')
-        self.assertEqual(info['CodexOAuthScope'], '')
-        self.assertEqual(self.oauth.count('guard CodexPlanOAuthConstants.enabled,'), 2)
-        self.assertLess(self.oauth.index('guard CodexPlanOAuthConstants.enabled,'),
-                        self.oauth.index('let operationID = try await beginForegroundOperation()'))
-    def test_no_desktop_identity_or_credential_import(self):
+        self.assertIs(info['CodexOAuthEnabled'], True)
+        self.assertEqual(info['CodexOAuthClientID'], 'app_EMoamEEZ73f0CkXaXp7hrann')
+        self.assertEqual(info['CodexOAuthScope'], 'openid profile email offline_access api.connectors.read api.connectors.invoke')
+        self.assertIn('codex_cli_simplified_flow', self.oauth)
+        self.assertIn('guard CodexPlanOAuthConstants.enabled,', self.oauth)
+    def test_no_desktop_credential_import(self):
         for source in self.auth.values():
-            for forbidden in ['app_EMoamEEZ73f0CkXaXp7hrann', 'codex_cli_simplified_flow',
-                              'auth.json', 'UserDefaults', 'NSAllowsArbitraryLoads']:
+            for forbidden in ['auth.json', 'UserDefaults', 'NSAllowsArbitraryLoads']:
                 self.assertNotIn(forbidden, source)
-    def test_no_ui_or_watch_calls(self):
-        for folder in ['Shared', 'Watch', 'iPhone']:
-            for path in (ROOT/folder).glob('*.swift'):
-                if folder == 'iPhone' and path.name in AUTH_FILES:
-                    continue
-                source = path.read_text()
-                for call in ['CodexPlanOAuth(', 'CodexPlanTokenStore(',
-                             'CodexOAuthCallbackServer(', '.signIn(', 'refresh_token']:
-                    self.assertNotIn(call, source, str(path))
+    def test_only_phone_controller_launches_oauth(self):
+        controller = (ROOT/'iPhone/RemoteConnectionController.swift').read_text()
+        self.assertIn('func signIn()', controller)
+        self.assertIn('oauth.signIn(expectedAccountID:', controller)
+        self.assertIn('oauth.stepUp(accountID:', controller)
+        self.assertNotIn('init() {', controller)
+        for path in (ROOT/'Watch').glob('*.swift'):
+            source = path.read_text()
+            for call in ['CodexPlanOAuth(', 'CodexPlanTokenStore(', '.signIn(', 'accessToken']:
+                self.assertNotIn(call, source, str(path))
     def test_sources_are_iphone_only(self):
         project = (ROOT/'WatchCodex.xcodeproj/project.pbxproj').read_text()
         uid = lambda key: hashlib.sha256(key.encode()).hexdigest()[:24].upper()

@@ -27,7 +27,7 @@ final class RemoteRelayTests: XCTestCase {
         let body = try XCTUnwrap(frame["message"] as? [String: Any])
         XCTAssertEqual(body["method"] as? String, "initialize")
         XCTAssertNil(body["jsonrpc"])
-        for method in ["thread/start", "thread/fork", "thread/resume", "turn/start", "turn/interrupt"] {
+        for method in ["thread/start", "thread/fork"] {
             XCTAssertThrowsError(try RemoteRelayCodec.request(id: 2, method: method)) {
                 XCTAssertEqual($0 as? RemoteRelayError, .unsupportedMethod)
             }
@@ -35,7 +35,32 @@ final class RemoteRelayTests: XCTestCase {
         let read = try RemoteRelayCodec.object(RemoteRelayCodec.request(id: 2, method: "thread/read", threadID: "existing"))
         let params = try XCTUnwrap(read["params"] as? [String: Any])
         XCTAssertEqual(params["threadId"] as? String, "existing")
-        XCTAssertEqual(params["includeTurns"] as? Bool, false)
+        XCTAssertEqual(params["includeTurns"] as? Bool, true)
+    }
+
+    func testExistingThreadMutationShapesNeverOverrideConfiguration() throws {
+        let resume = try RemoteRelayCodec.object(RemoteRelayCodec.request(id: 1, method: "thread/resume", threadID: "existing"))
+        let resumeParams = try XCTUnwrap(resume["params"] as? [String: Any])
+        XCTAssertEqual(Set(resumeParams.keys), ["threadId"])
+        let start = try RemoteRelayCodec.object(RemoteRelayCodec.request(id: 2, method: "turn/start", threadID: "existing", text: "Continue"))
+        let startParams = try XCTUnwrap(start["params"] as? [String: Any])
+        XCTAssertEqual(Set(startParams.keys), ["threadId", "input"])
+        let input = try XCTUnwrap(startParams["input"] as? [[String: Any]])
+        XCTAssertEqual(input.count, 1)
+        XCTAssertEqual(input[0]["type"] as? String, "text")
+        XCTAssertEqual(input[0]["text"] as? String, "Continue")
+        XCTAssertEqual((input[0]["text_elements"] as? [String])?.count, 0)
+        let stop = try RemoteRelayCodec.object(RemoteRelayCodec.request(id: 3, method: "turn/interrupt", threadID: "existing", turnID: "exact-turn"))
+        let stopParams = try XCTUnwrap(stop["params"] as? [String: Any])
+        XCTAssertEqual(Set(stopParams.keys), ["threadId", "turnId"])
+        XCTAssertEqual(stopParams["turnId"] as? String, "exact-turn")
+        for method in ["thread/resume", "turn/start", "turn/interrupt"] {
+            XCTAssertThrowsError(try RemoteRelayCodec.request(id: 1, method: method))
+            XCTAssertThrowsError(try RemoteRelayCodec.request(id: 1, method: method, threadID: " ", turnID: "turn", text: "hello"))
+        }
+        XCTAssertThrowsError(try RemoteRelayCodec.request(id: 1, method: "turn/start", threadID: "existing", text: " "))
+        XCTAssertThrowsError(try RemoteRelayCodec.request(id: 1, method: "turn/start", threadID: "existing", text: String(repeating: "a", count: 2001)))
+        XCTAssertThrowsError(try RemoteRelayCodec.request(id: 1, method: "turn/interrupt", threadID: "existing"))
     }
 
     func testAckAndForeignResponsesNeverCompleteRequest() throws {
@@ -93,11 +118,11 @@ final class RemoteRelayTests: XCTestCase {
         XCTAssertThrowsError(try start(&codec, id: 2)) {
             XCTAssertEqual($0 as? RemoteRelayError, .busy)
         }
-        let result = try XCTUnwrap(codec.receive(frame(message: ["type": "error", "code": "unavailable"])))
-        let body = try RemoteRelayCodec.object(result)
-        XCTAssertEqual(body["id"] as? Int, 1)
-        XCTAssertNotNil(body["error"])
-        XCTAssertNil(codec.pendingID)
+        XCTAssertThrowsError(try codec.receive(frame(message: ["type": "error", "code": "unavailable"]))) {
+            XCTAssertEqual($0 as? RemoteRelayError, .remoteFailure)
+        }
+        // A relay-level error cannot correlate a definite mutation failure.
+        XCTAssertEqual(codec.pendingID, 1)
     }
 
     func testNotificationDoesNotCompleteReadAndMalformedResultFails() throws {

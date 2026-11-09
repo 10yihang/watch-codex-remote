@@ -2,7 +2,7 @@ import CryptoKit
 import Foundation
 import Security
 
-// Dormant provider: no launch-time calls and no approved iOS Remote enrollment flow yet.
+// Explicit enrollment only. The app never creates a key on launch.
 // Creating a persistent credential must only follow explicit user authorization.
 enum RemoteDeviceKey {
     struct Identity: Codable, Equatable {
@@ -31,7 +31,7 @@ enum RemoteDeviceKey {
         guard SecureEnclave.isAvailable else { throw Failure.unavailable }
         var error: Unmanaged<CFError>?
         guard let access = SecAccessControlCreateWithFlags(
-            nil, kSecAttrAccessibleWhenUnlockedThisDeviceOnly, .privateKeyUsage, &error
+            nil, kSecAttrAccessibleWhenUnlockedThisDeviceOnly, [.privateKeyUsage, .userPresence], &error
         ) else {
             _ = error?.takeRetainedValue()
             throw Failure.accessControl
@@ -42,7 +42,7 @@ enum RemoteDeviceKey {
         let identity = Identity(
             algorithm: "ecdsa_p256_sha256",
             keyId: keyPrefix + UUID().uuidString.lowercased(),
-            protectionClass: "os_protected_nonextractable",
+            protectionClass: "hardware_secure_enclave",
             publicKeySpkiDerBase64: key.publicKey.derRepresentation.base64EncodedString()
         )
         try validate(identity, publicKey: key.publicKey)
@@ -120,7 +120,7 @@ enum RemoteDeviceKey {
     private static func validate(_ identity: Identity, publicKey: P256.Signing.PublicKey) throws {
         _ = try query(keyId: identity.keyId)
         guard identity.algorithm == "ecdsa_p256_sha256",
-              identity.protectionClass == "os_protected_nonextractable",
+              identity.protectionClass == "hardware_secure_enclave",
               let der = Data(base64Encoded: identity.publicKeySpkiDerBase64),
               der.base64EncodedString() == identity.publicKeySpkiDerBase64,
               let parsed = try? P256.Signing.PublicKey(derRepresentation: der),

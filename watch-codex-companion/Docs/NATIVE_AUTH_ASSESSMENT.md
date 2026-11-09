@@ -1,3 +1,5 @@
+> Historical report. This local candidate now wires the experimental real flow and supersedes the disabled/read-only claims below. See [LIVE_CONNECTION.md](LIVE_CONNECTION.md) for current scope and unrun Apple/device checks. No prior CI result validates this revision.
+
 # Native iPhone authentication assessment and local candidate
 
 Prepared 2026-11-09. This is a source comparison and a dormant implementation candidate, not a successful account connection.

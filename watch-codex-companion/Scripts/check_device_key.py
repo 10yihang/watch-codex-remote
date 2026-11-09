@@ -12,6 +12,12 @@ assert "publicKey.derRepresentation == der" in source
 assert "stored.identity == expected" in source
 assert not any(value in source for value in ("print(", "Logger(", ".pemRepresentation", ".rawRepresentation"))
 for candidate in [*root.glob("iPhone/*.swift"), *root.glob("Shared/*.swift")]:
-    if candidate != path:
+    if candidate != path and candidate.name != "RemoteConnectionController.swift":
         assert "RemoteDeviceKey.create(" not in candidate.read_text(), candidate
-print("PASS: dormant device-key structural guardrails (not compilation or hardware verification)")
+assert '[.privateKeyUsage, .userPresence]' in source
+assert '"hardware_secure_enclave"' in source
+controller = (root / "iPhone/RemoteConnectionController.swift").read_text()
+assert controller.count("RemoteDeviceKey.create(") == 1
+assert controller.index("func enroll()") < controller.index("RemoteDeviceKey.create(") < controller.index("func pair(")
+assert "saved.phase = .enrollmentUnknown; try saved.save()" in controller
+print("PASS: explicit-enrollment device-key structural guardrails (not compilation or hardware verification)")

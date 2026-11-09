@@ -1,34 +1,16 @@
 # watch-codex-remote
 
-Native SwiftUI iPhone and Apple Watch companion prototype, plus an offline protocol probe.
+Native SwiftUI iPhone + Apple Watch companion with an **experimental real Remote connection path** and a separate demo.
 
-**Current status: demo UI plus an experimental native connection layer. Live authentication and connectivity are not available or verified.**
+**This local candidate is not yet compiled or tested on an Apple device. No successful real account connection is claimed.** The old `f7de911` build/CI result does not validate these changes.
 
-The new Swift layer implements device signing, Secure Enclave key storage, enrollment/pairing HTTP requests and read-only relay access to existing threads. It stays inactive until an approved app-specific Remote authorization flow exists. See [implementation, blocker and validation status](watch-codex-companion/Docs/REMOTE_IMPLEMENTATION.md). The native OAuth baseline `fa96253` passed [cloud tests and both simulator builds](https://github.com/10yihang/watch-codex-remote/actions/runs/42632249643) on 2026-11-09; consult the current commit’s Checks for later changes.
+The real tab now calls native browser OAuth → separate Remote step-up → Secure Enclave enrollment → explicit Mac pairing/selection → relay → existing-thread read/send/stop. It does not import desktop credentials or require an extra host bridge. Credentials stay on iPhone; Watch sends bounded, destination-bound commands through WatchConnectivity.
 
-## Local native OAuth preparation
+This is an unofficial private-interface integration. The public Codex OAuth application identifier is taken from the pinned MIT NightBlood reference, not an app-specific registered identifier. It is not a secret and its availability does not establish third-party service support. Runtime rejection and upstream protocol changes remain possible.
 
-A dormant iPhone OAuth implementation adapted from MIT-licensed NightBlood Remote is included for review. Its configuration is disabled and empty, it has no UI or launch call sites, and it does not enroll or pair a device. The baseline passed 49 Swift core tests and both simulator builds. Live authentication remains untested, and these shared-core tests are not runtime tests of the OAuth flow. See [the source comparison, exact scope and validation checklist](watch-codex-companion/Docs/NATIVE_AUTH_ASSESSMENT.md).
+## Open and validate
 
-## Project
-
-- [`watch-codex-companion`](watch-codex-companion/README.md): Xcode project, WatchConnectivity demo, Swift core tests and device checklist.
-- [`watch-codex-probe`](watch-codex-probe/README.md): offline protocol encoding/signature tests and preserved upstream source references.
-
-Open `watch-codex-companion/WatchCodex.xcodeproj` with Xcode 16 or newer. The targets require iOS 17+ and watchOS 10+.
-
-## Cloud verification
-
-The `Apple simulator build` workflow uses standard GitHub-hosted Ubuntu and `macos-15` runners. It runs on pushes to `main`/`master`, pull requests and manual dispatch:
-
-1. Run source/project guardrails and 20 offline Node.js protocol tests.
-2. Run Swift core and new native Remote XCTest cases.
-3. Build the iPhone and Watch simulator apps with signing disabled.
-4. Retain the Apple build log for seven days.
-
-The workflow has read-only repository permissions, does not use repository secrets, and does not enroll devices, sign in, pair hosts, sign builds or install on physical devices. A passing build does not verify UI appearance, iPhone lock-screen operation, WatchConnectivity on devices or real Remote compatibility. The new connection/OAuth code at `fa96253` passed on 2026-11-09 ([verified run](https://github.com/10yihang/watch-codex-remote/actions/runs/42632249643)): 24 source/project checks (including auth guardrails), 20 Node tests, 49 Swift core tests, both unsigned simulator builds and the demo screenshot step. Use the workflow run for the exact commit being tested. OAuth, Keychain and physical-device behavior remain untested.
-
-To run the equivalent checks on a Mac with Xcode selected:
+Open `watch-codex-companion/WatchCodex.xcodeproj` in Xcode 16 or newer. iOS 17+ and watchOS 10+ are required. Preserve your local development team, bundle IDs and Watch companion ID when applying source changes. Do not replace signing settings with template defaults.
 
 ```sh
 python3 watch-codex-companion/Scripts/check_source.py
@@ -36,8 +18,19 @@ node --test watch-codex-probe/probe.test.mjs
 bash watch-codex-companion/Scripts/verify_apple.sh
 ```
 
-## Third-party source
+Passed locally: 26 source/project checks (including 12 OAuth structural checks) and 20 offline Node protocol tests. There are 70 Swift XCTest methods in the candidate; **none were executed for this revision**, and neither simulator target was built. Full Xcode and Swift are absent from the local Linux environment.
 
-The probe includes reference files from rcodex (MIT) and OpenAI Codex (Apache-2.0). Their licenses and pinned source revisions are preserved under `watch-codex-probe/upstream/` and documented in the probe README. The source files are references for offline tests, not an installed or executed Remote client.
+See [real connection implementation and device acceptance](watch-codex-companion/Docs/LIVE_CONNECTION.md).
 
-The native OAuth preparation preserves NightBlood Remote’s MIT license and notices under `watch-codex-companion/ThirdParty/NightBloodRemote/`. It does not include NightBlood branding, voice, CarPlay or desktop transcript integration.
+## Boundaries
+
+- Nothing logs in, enrolls a device or reconnects automatically at launch.
+- Login and device enrollment require separate in-app confirmations. Keys/tokens are device-only Keychain items; device signing uses Secure Enclave and user presence.
+- Every pairing, host selection, send and stop is explicit. No new thread/fork, permission/model/cwd override, hidden host bridge, background command queue or automatic mutation replay.
+- Unknown mutations are journaled before dispatch and locked across restart until the affected host/thread is read and the user acknowledges the result.
+- iPhone must remain open and unlocked. Backgrounding closes the relay. No background/lock-screen reliability claim is made.
+- Real flow is the default tab/page. Demo data and commands use a different wire envelope and cannot enter the real controller.
+
+## Sources
+
+The original offline probe preserves rcodex MIT and OpenAI Codex Apache-2.0 references under `watch-codex-probe/upstream/`. Native authentication follows [NightBlood Remote at 4824aceb1cd04ac521f7f0342771c20edad60dac](https://github.com/jonathanroomer/NightBloodRemote/tree/4824aceb1cd04ac521f7f0342771c20edad60dac), with its notices preserved under `watch-codex-companion/ThirdParty/NightBloodRemote/`. No voice, CarPlay, branding or desktop transcript bridge is included.

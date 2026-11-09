@@ -1,3 +1,5 @@
+> Historical report. This local candidate now wires the experimental real flow and supersedes the disabled/read-only claims below. See [LIVE_CONNECTION.md](LIVE_CONNECTION.md) for current scope and unrun Apple/device checks. No prior CI result validates this revision.
+
 # 验证报告
 
 ## 2026-11-09 cloud validation update

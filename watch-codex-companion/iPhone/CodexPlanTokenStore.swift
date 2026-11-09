@@ -1,7 +1,7 @@
 // Adapted from NightBlood Remote, commit 4824aceb1cd04ac521f7f0342771c20edad60dac.
 // Copyright (c) 2026 NightBlood Remote contributors. MIT License.
 // See ../ThirdParty/NightBloodRemote/LICENSE and NOTICE.md.
-// Dormant preparation only: no UI/launch call sites, login or account enrollment.
+// Credentials remain in this iPhone device-only Keychain; never transfer to Watch.
 
 import Foundation
 import Security
@@ -121,6 +121,14 @@ public actor CodexPlanTokenStore {
         }
     }
 
+    public func clear() throws {
+        try validateConfiguration()
+        let status = SecItemDelete(baseQuery as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else {
+            throw CodexPlanOAuthError.keychain(status: status)
+        }
+    }
+
     private func validate(_ tokens: CodexPlanTokens) throws {
         guard [tokens.accessToken, tokens.refreshToken, tokens.idToken].allSatisfy({
             !$0.isEmpty && $0.utf8.count <= 262_144 &&
@@ -153,4 +161,29 @@ public actor CodexPlanTokenStore {
             throw CodexPlanOAuthError.invalidKeychainConfiguration
         }
     }
+}
+
+/// Ephemeral enrollment credential, separate from the persisted ordinary login.
+/// Payload checks are not cryptographic verification; the server validates it.
+public struct CodexRemoteStepUpToken: Sendable, CustomStringConvertible, CustomDebugStringConvertible {
+    public let rawValue: String
+    public let accountID: String
+    public let accountUserID: String
+    public let clientID: String
+
+    public init(validating rawValue: String, accountID: String, accountUserID: String,
+                clientID: String, now: Date = Date()) throws {
+        try RemoteTokenClaims.validateStepUp(rawValue: rawValue, accountID: accountID,
+            accountUserID: accountUserID, clientID: clientID, now: now)
+        self.rawValue = rawValue
+        self.accountID = accountID
+        self.accountUserID = accountUserID
+        self.clientID = clientID
+    }
+    public func validate(now: Date = Date()) throws {
+        try RemoteTokenClaims.validateStepUp(rawValue: rawValue, accountID: accountID,
+            accountUserID: accountUserID, clientID: clientID, now: now)
+    }
+    public var description: String { "CodexRemoteStepUpToken(<redacted>)" }
+    public var debugDescription: String { description }
 }

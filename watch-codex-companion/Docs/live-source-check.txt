@@ -1,0 +1,32 @@
+Checking project/source structure only; Swift/Xcode execution is separate.
+test_accent_contrast_on_light_and_dark_background (__main__.SourceChecks.test_accent_contrast_on_light_and_dark_background) ... ok
+test_all_object_references_resolve (__main__.SourceChecks.test_all_object_references_resolve) ... ok
+test_background_task_waits_until_session_data_drained (__main__.SourceChecks.test_background_task_waits_until_session_data_drained) ... ok
+test_capture_uses_sdk_compatible_runtime (__main__.SourceChecks.test_capture_uses_sdk_compatible_runtime) ... ok
+test_commands_are_not_background_queued (__main__.SourceChecks.test_commands_are_not_background_queued) ... ok
+test_companion_bundle_identifiers_match (__main__.SourceChecks.test_companion_bundle_identifiers_match) ... ok
+test_credentials_do_not_enter_watch_payload (__main__.SourceChecks.test_credentials_do_not_enter_watch_payload) ... ok
+test_device_key_guardrails (__main__.SourceChecks.test_device_key_guardrails) ... ok
+test_embed_phase_and_dependency_exist (__main__.SourceChecks.test_embed_phase_and_dependency_exist) ... ok
+test_generator_is_deterministic (__main__.SourceChecks.test_generator_is_deterministic) ... ok
+test_live_source_separated_and_no_launch_side_effects (__main__.SourceChecks.test_live_source_separated_and_no_launch_side_effects) ... ok
+test_native_auth_guardrails (__main__.SourceChecks.test_native_auth_guardrails) ... ok
+test_native_glass_uses_supported_materials (__main__.SourceChecks.test_native_glass_uses_supported_materials) ... ok
+test_native_ui_is_explicitly_demo_and_source_switch_disabled (__main__.SourceChecks.test_native_ui_is_explicitly_demo_and_source_switch_disabled) ... ok
+test_new_native_remote_tests_are_in_swift_package (__main__.SourceChecks.test_new_native_remote_tests_are_in_swift_package) ... ok
+test_no_thread_creation_or_fork_command (__main__.SourceChecks.test_no_thread_creation_or_fork_command) ... ok
+test_phone_navigation_survives_session_state_changes (__main__.SourceChecks.test_phone_navigation_survives_session_state_changes) ... ok
+test_remote_implementation_cannot_borrow_desktop_auth (__main__.SourceChecks.test_remote_implementation_cannot_borrow_desktop_auth) ... ok
+test_remote_transport_is_existing_thread_only_and_redirects_are_denied (__main__.SourceChecks.test_remote_transport_is_existing_thread_only_and_redirects_are_denied) ... ok
+test_schemes_are_well_formed_and_match_targets (__main__.SourceChecks.test_schemes_are_well_formed_and_match_targets) ... ok
+test_source_files_exist_and_are_in_each_target (__main__.SourceChecks.test_source_files_exist_and_are_in_each_target) ... ok
+test_stop_confirmation_captures_selected_turn (__main__.SourceChecks.test_stop_confirmation_captures_selected_turn) ... ok
+test_swift_tests_present_but_not_claimed_executed (__main__.SourceChecks.test_swift_tests_present_but_not_claimed_executed) ... ok
+test_two_modern_application_targets (__main__.SourceChecks.test_two_modern_application_targets) ... ok
+test_unknown_mutation_stays_blocked_on_failed_refresh (__main__.SourceChecks.test_unknown_mutation_stays_blocked_on_failed_refresh) ... ok
+test_watch_uses_readable_dark_appearance (__main__.SourceChecks.test_watch_uses_readable_dark_appearance) ... ok
+
+----------------------------------------------------------------------
+Ran 26 tests in 0.164s
+
+OK

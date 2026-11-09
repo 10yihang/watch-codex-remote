@@ -21,11 +21,13 @@
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>CodexOAuthEnabled</key>
-	<false/>
+	<true/>
 	<key>CodexOAuthClientID</key>
-	<string></string>
+	<string>app_EMoamEEZ73f0CkXaXp7hrann</string>
 	<key>CodexOAuthScope</key>
-	<string></string>
+	<string>openid profile email offline_access api.connectors.read api.connectors.invoke</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>通过系统身份验证使用本机 Codex Remote 控制器密钥。</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

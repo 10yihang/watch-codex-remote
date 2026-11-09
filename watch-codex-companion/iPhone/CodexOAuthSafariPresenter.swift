@@ -1,7 +1,7 @@
 // Adapted from NightBlood Remote, commit 4824aceb1cd04ac521f7f0342771c20edad60dac.
 // Copyright (c) 2026 NightBlood Remote contributors. MIT License.
 // See ../ThirdParty/NightBloodRemote/LICENSE and NOTICE.md.
-// Dormant preparation only: no UI/launch call sites, login or account enrollment.
+// Explicit foreground native OAuth support; never started on app launch.
 
 import Foundation
 @preconcurrency import SafariServices

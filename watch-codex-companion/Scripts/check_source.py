@@ -31,7 +31,7 @@ class SourceChecks(unittest.TestCase):
         for source in re.findall(r'path = "([^"]+\.swift)";', self.project):
             self.assertTrue((ROOT/source).is_file(), source)
         self.assertEqual(self.project.count('isa = PBXSourcesBuildPhase;'), 2)
-        self.assertEqual(self.project.count('isa = PBXBuildFile;'), 22)  # 19 source + 2 assets + 1 embed
+        self.assertEqual(self.project.count('isa = PBXBuildFile;'), 33)  # 30 source + 2 assets + 1 embed
     def test_companion_bundle_identifiers_match(self):
         watch = plistlib.loads((ROOT/'Watch/Info.plist').read_bytes())
         self.assertTrue(watch['WKApplication'])
@@ -53,23 +53,47 @@ class SourceChecks(unittest.TestCase):
                 self.assertEqual(ref.attrib['BuildableName'],f'WatchCodex{name}.app')
     def test_remote_implementation_cannot_borrow_desktop_auth(self):
         sources = '\n'.join(path.read_text() for folder in ['Shared', 'iPhone', 'Watch'] for path in (ROOT/folder).glob('*.swift'))
-        for forbidden in ['auth.json', 'app_EMoamEEZ73f0CkXaXp7hrann', 'ASWebAuthenticationSession',
-                          'UserDefaults.standard', 'codex_cli_simplified_flow', 'NSAllowsArbitraryLoads']:
+        for forbidden in ['auth.json', 'NSAllowsArbitraryLoads']:
             self.assertNotIn(forbidden,sources)
         ui = '\n'.join((ROOT/p).read_text() for p in ['iPhone/PhoneApp.swift', 'iPhone/PhoneRootView.swift', 'Shared/CompanionStore.swift'])
         for forbidden in ['RemoteAPI(', 'RemoteRelay(', 'RemoteDeviceKey.create(', 'CodexPlanOAuth(', '.signIn(', 'CodexPlanTokenStore(']:
             self.assertNotIn(forbidden, ui)
-    def test_remote_transport_is_read_only_and_redirects_are_denied(self):
+    def test_remote_transport_is_existing_thread_only_and_redirects_are_denied(self):
         relay = (ROOT/'Shared/RemoteRelay.swift').read_text()
         api = (ROOT/'Shared/RemoteAPI.swift').read_text()
         for source in [relay, api]:
             self.assertIn('completionHandler(nil)', source)
             self.assertIn('URLSessionConfiguration.ephemeral', source)
-        for forbidden in ['"thread/start"', '"thread/fork"', '"turn/start"', '"turn/interrupt"']:
+        for forbidden in ['"thread/start"', '"thread/fork"']:
             self.assertNotIn(forbidden, relay)
         self.assertIn('maximumMessageSize', relay)
+        for method in ['thread/resume', 'turn/start', 'turn/interrupt']:
+            self.assertIn(method, relay)
         self.assertIn('outcomeUnknown', relay)
         self.assertIn('guard data.count < Self.maxResponseBytes', api)
+    def test_live_source_separated_and_no_launch_side_effects(self):
+        controller = (ROOT/'iPhone/RemoteConnectionController.swift').read_text()
+        wire = (ROOT/'Shared/LiveWire.swift').read_text()
+        self.assertNotIn('DemoEngine', controller)
+        self.assertIn('codex.remote.live.v1', wire)
+        self.assertNotIn('init() {', controller)
+        for path in ['iPhone/PhoneApp.swift', 'Watch/WatchApp.swift']:
+            source = (ROOT/path).read_text()
+            self.assertNotIn('.signIn()', source)
+            self.assertNotIn('.enroll()', source)
+        self.assertIn('phase = .enrollmentUnknown; try saved.save()', controller)
+        self.assertIn('saved.pendingMutation = .init', controller)
+        self.assertIn('try saved.save(); setJournal(saved)', controller)
+        self.assertIn('recentRequestIDs.contains(command.id)', controller)
+        self.assertIn('pending.environmentID == snapshot.binding?.environmentID', controller)
+    def test_credentials_do_not_enter_watch_payload(self):
+        wire = (ROOT/'Shared/LiveWire.swift').read_text()
+        for forbidden in ['accessToken', 'refreshToken', 'remoteControlToken', 'wrappedKey', 'stepUpToken']:
+            self.assertNotIn(forbidden, wire)
+        journal = (ROOT/'iPhone/RemoteConnectionJournal.swift').read_text()
+        self.assertIn('kSecAttrAccessibleWhenUnlockedThisDeviceOnly', journal)
+        self.assertIn('kSecAttrSynchronizable as String: false', journal)
+        self.assertNotIn('UserDefaults', journal)
     def test_native_auth_guardrails(self):
         subprocess.run([sys.executable, str(ROOT/'Scripts/check_native_auth.py')], check=True, capture_output=True)
     def test_device_key_guardrails(self):

@@ -1,15 +1,15 @@
 // Adapted from NightBlood Remote, commit 4824aceb1cd04ac521f7f0342771c20edad60dac.
 // Copyright (c) 2026 NightBlood Remote contributors. MIT License.
 // See ../ThirdParty/NightBloodRemote/LICENSE and NOTICE.md.
-// Dormant preparation only: no UI/launch call sites, login or account enrollment.
+// Experimental native OAuth. Service compatibility is not guaranteed.
 
 import CryptoKit
 import Foundation
 import Security
 @preconcurrency import UIKit
 
-/// Disabled native OAuth preparation. Configuration is intentionally absent.
-/// A reviewed client, scopes and redirect contract must be supplied together.
+/// Experimental native OAuth using the pinned public Codex client contract.
+/// Explicit build configuration and user-initiated browser consent are required.
 /// A setting is a technical gate, not proof of service support or user consent.
 public enum CodexPlanOAuthConstants {
     public static let authorizationEndpoint = URL(string: "https://auth.openai.com/oauth/authorize")!
@@ -69,7 +69,7 @@ public enum CodexPlanOAuthError: Error, LocalizedError, Sendable {
         case .responseTooLarge:
             "The OAuth token response exceeded the size limit."
         case .missingOAuthClientID:
-            "This build has no Codex Remote OAuth client ID. Demo mode remains available; see Docs/NATIVE_AUTH_ASSESSMENT.md."
+            "This build has no experimental Codex OAuth client ID."
         case .applicationNotActive:
             "Codex sign-in can start only while Watch Codex is in the foreground."
         case .invalidTimeout:
@@ -141,6 +141,11 @@ public actor CodexPlanOAuth {
         }
     }
 
+    private struct StepUpResponse: Decodable {
+        let accessToken: String
+        enum CodingKeys: String, CodingKey { case accessToken = "access_token" }
+    }
+
     private struct RefreshRequest: Encodable {
         let clientID: String
         let grantType = "refresh_token"
@@ -186,6 +191,8 @@ public actor CodexPlanOAuth {
     /// main actor and must present the supplied URL in SFSafariViewController.
     @discardableResult
     public func signIn(
+        expectedAccountID: String? = nil,
+        expectedAccountUserID: String? = nil,
         timeout: Duration = .seconds(180),
         presentSafari: CodexOAuthSafariPresentation
     ) async throws -> CodexPlanTokens {
@@ -238,7 +245,96 @@ public actor CodexPlanOAuth {
                     operationID: operationID
                 )
                 try ensureActive(operationID)
+                let identity = try RemoteTokenClaims.parseOrdinary(accessToken: tokens.accessToken,
+                    expectedClientID: CodexPlanOAuthConstants.clientID)
+                if let expectedAccountID, identity.accountID != expectedAccountID { throw RemoteTokenClaimsError.accountMismatch }
+                if let expectedAccountUserID,
+                   identity.accountUserID != expectedAccountUserID && identity.tokenUserID != expectedAccountUserID {
+                    throw RemoteTokenClaimsError.accountMismatch
+                }
                 try await tokenStore.save(tokens)
+                await finish(operationID: operationID)
+                return tokens
+            } catch {
+                let wasCancelled = cancellationRequested
+                    || Task.isCancelled
+                    || error is CancellationError
+                    || (error as? CodexPlanOAuthError)?.isCancellation == true
+                await finish(operationID: operationID)
+                if wasCancelled {
+                    throw CodexPlanOAuthError.cancelled
+                }
+                throw error
+            }
+        } onCancel: {
+            Task { await self.cancel(operationID: operationID) }
+        }
+    }
+
+    /// Separate fresh browser consent. Never saves step-up credentials over ordinary tokens.
+    public func stepUp(
+        accountID: String, accountUserID: String,
+        timeout: Duration = .seconds(180),
+        presentSafari: CodexOAuthSafariPresentation
+    ) async throws -> CodexRemoteStepUpToken {
+        guard CodexPlanOAuthConstants.enabled, !CodexPlanOAuthConstants.scope.isEmpty else {
+            throw CodexPlanOAuthError.configurationDisabled
+        }
+        guard !CodexPlanOAuthConstants.clientID.isEmpty else {
+            throw CodexPlanOAuthError.missingOAuthClientID
+        }
+        guard timeout > .zero else {
+            throw CodexPlanOAuthError.invalidTimeout
+        }
+        guard let ordinary = try await tokenStore.load() else { throw CodexPlanOAuthError.noStoredTokens }
+        let identity = try RemoteTokenClaims.parseOrdinary(accessToken: ordinary.accessToken,
+            expectedClientID: CodexPlanOAuthConstants.clientID)
+        guard identity.accountID == accountID, identity.accountUserID == accountUserID else {
+            throw RemoteTokenClaimsError.accountMismatch
+        }
+        let operationID = try await beginForegroundOperation()
+
+        return try await withTaskCancellationHandler {
+            do {
+                let pkce = try Self.makePKCE()
+                let state = try Self.randomBase64URL(byteCount: 32)
+                let server = CodexOAuthCallbackServer()
+                callbackServer = server
+                let redirectURI = try await server.start(
+                    expectedState: state,
+                    timeout: timeout
+                )
+                try ensureActive(operationID)
+
+                let authorizationURL = try Self.authorizationURL(
+                    redirectURI: redirectURI,
+                    pkce: pkce,
+                    state: state,
+                    stepUpAccountID: accountID
+                )
+                let userCancelled: @Sendable () -> Void = { [weak self] in
+                    Task { await self?.cancel(operationID: operationID) }
+                }
+                let browser = try await presentSafari(
+                    authorizationURL,
+                    userCancelled
+                )
+                safariSession = browser
+                try ensureActive(operationID)
+
+                let code = try await server.waitForAuthorizationCode()
+                try ensureActive(operationID)
+                await dismissSafari()
+
+                let data = try await exchangeCodeData(code, redirectURI: redirectURI,
+                    verifier: pkce.verifier, operationID: operationID)
+                let response: StepUpResponse
+                do { response = try JSONDecoder().decode(StepUpResponse.self, from: data) }
+                catch { throw CodexPlanOAuthError.invalidTokenResponse }
+                let tokens = try CodexRemoteStepUpToken(validating: response.accessToken,
+                    accountID: accountID, accountUserID: accountUserID,
+                    clientID: CodexPlanOAuthConstants.clientID)
+                try ensureActive(operationID)
                 await finish(operationID: operationID)
                 return tokens
             } catch {
@@ -274,6 +370,12 @@ public actor CodexPlanOAuth {
                 guard let existing = try await tokenStore.load() else {
                     throw CodexPlanOAuthError.noStoredTokens
                 }
+                // Refresh is needed precisely when this token expires. Read its
+                // routing identity against epoch time, then demand a fresh token
+                // with the same identity before replacing the Keychain entry.
+                let previousAccount = try RemoteTokenClaims.parseOrdinary(
+                    accessToken: existing.accessToken, expectedClientID: CodexPlanOAuthConstants.clientID,
+                    now: Date(timeIntervalSince1970: 0), minimumValidity: 0)
                 let body: Data
                 do {
                     body = try JSONEncoder().encode(
@@ -324,6 +426,12 @@ public actor CodexPlanOAuth {
                     )
                 )
                 try ensureActive(operationID)
+                let refreshedAccount = try RemoteTokenClaims.parseOrdinary(accessToken: tokens.accessToken,
+                    expectedClientID: CodexPlanOAuthConstants.clientID)
+                guard refreshedAccount.accountID == previousAccount.accountID,
+                      refreshedAccount.accountUserID == previousAccount.accountUserID else {
+                    throw RemoteTokenClaimsError.accountMismatch
+                }
                 try await tokenStore.save(tokens)
                 await finish(operationID: operationID)
                 return tokens
@@ -345,6 +453,12 @@ public actor CodexPlanOAuth {
 
     public func storedTokens() async throws -> CodexPlanTokens? {
         try await tokenStore.load()
+    }
+
+    /// Deletes only local ordinary credentials. This does not revoke server enrollment.
+    public func clearStoredTokens() async throws {
+        guard activeOperationID == nil else { throw CodexPlanOAuthError.alreadyInProgress }
+        try await tokenStore.clear()
     }
 
     /// Cancels the current browser callback wait or token request. It never
@@ -438,6 +552,17 @@ public actor CodexPlanOAuth {
         verifier: String,
         operationID: UUID
     ) async throws -> CodexPlanTokens {
+        let data = try await exchangeCodeData(code, redirectURI: redirectURI, verifier: verifier, operationID: operationID)
+        let decoded: TokenExchangeResponse
+        do { decoded = try JSONDecoder().decode(TokenExchangeResponse.self, from: data) }
+        catch { throw CodexPlanOAuthError.invalidTokenResponse }
+        guard !decoded.accessToken.isEmpty, !decoded.refreshToken.isEmpty, !decoded.idToken.isEmpty else {
+            throw CodexPlanOAuthError.invalidTokenResponse
+        }
+        return CodexPlanTokens(accessToken: decoded.accessToken, refreshToken: decoded.refreshToken, idToken: decoded.idToken)
+    }
+
+    private func exchangeCodeData(_ code: String, redirectURI: URL, verifier: String, operationID: UUID) async throws -> Data {
         let form = Self.formEncoded([
             ("grant_type", "authorization_code"),
             ("code", code),
@@ -461,23 +586,7 @@ public actor CodexPlanOAuth {
 
         let (data, response) = try await send(request, operationID: operationID)
         try validateHTTPResponse(response)
-        let decoded: TokenExchangeResponse
-        do {
-            decoded = try JSONDecoder().decode(TokenExchangeResponse.self, from: data)
-        } catch {
-            throw CodexPlanOAuthError.invalidTokenResponse
-        }
-        guard !decoded.accessToken.isEmpty,
-              !decoded.refreshToken.isEmpty,
-              !decoded.idToken.isEmpty
-        else {
-            throw CodexPlanOAuthError.invalidTokenResponse
-        }
-        return CodexPlanTokens(
-            accessToken: decoded.accessToken,
-            refreshToken: decoded.refreshToken,
-            idToken: decoded.idToken
-        )
+        return data
     }
 
     private func send(
@@ -545,7 +654,8 @@ public actor CodexPlanOAuth {
     private static func authorizationURL(
         redirectURI: URL,
         pkce: PKCE,
-        state: String
+        state: String,
+        stepUpAccountID: String? = nil
     ) throws -> URL {
         var components = URLComponents(
             url: CodexPlanOAuthConstants.authorizationEndpoint,
@@ -559,9 +669,20 @@ public actor CodexPlanOAuth {
             URLQueryItem(name: "code_challenge", value: pkce.challenge),
             URLQueryItem(name: "code_challenge_method", value: "S256"),
             URLQueryItem(name: "id_token_add_organizations", value: "true"),
+            URLQueryItem(name: "codex_cli_simplified_flow", value: "true"),
             URLQueryItem(name: "state", value: state),
             URLQueryItem(name: "originator", value: CodexPlanOAuthConstants.originator),
         ]
+        if let accountID = stepUpAccountID {
+            components?.queryItems?.removeAll { $0.name == "scope" || $0.name == "id_token_add_organizations" }
+            components?.queryItems?.append(contentsOf: [
+                URLQueryItem(name: "scope", value: RemoteTokenClaims.stepUpScope),
+                URLQueryItem(name: "reauth", value: "remote_control"),
+                URLQueryItem(name: "max_age", value: "0"),
+                URLQueryItem(name: "allowed_workspace_id", value: accountID),
+                URLQueryItem(name: "current_workspace_id", value: accountID)
+            ])
+        }
         guard let url = components?.url else {
             throw CodexPlanOAuthError.invalidAuthorizationURL
         }

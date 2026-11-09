@@ -7,10 +7,10 @@ import FoundationNetworking
 public enum RemoteRelayError: Error, Equatable, Sendable {
     case invalidInput, malformedFrame, frameTooLarge, chunksUnsupported
     case wrongDestination, sequenceGap, disconnected, busy, notInitialized
-    case timedOut, outcomeUnknown(requestID: Int), remoteFailure, unsupportedMethod
+    case timedOut, outcomeUnknown(requestID: Int), remoteFailure, unsupportedMethod, staleSelection
 }
 
-/// Pure relay-v3 framing. No credentials, networking, thread creation, or mutations.
+/// Pure relay-v3 framing. No credentials or networking; only existing-thread RPCs.
 public struct RemoteRelayCodec {
     public static let maximumFrameBytes = 150 * 1024
     public static let maximumSafeInteger = 9_007_199_254_740_991
@@ -30,13 +30,13 @@ public struct RemoteRelayCodec {
 
     public static func object(_ data: Data) throws -> [String: Any] {
         guard data.count <= maximumFrameBytes else { throw RemoteRelayError.frameTooLarge }
-        guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+        guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
             throw RemoteRelayError.malformedFrame
         }
         return object
     }
 
-    public static func request(id: Int, method: String, cursor: String? = nil, threadID: String? = nil) throws -> Data {
+    public static func request(id: Int, method: String, cursor: String? = nil, threadID: String? = nil, turnID: String? = nil, text: String? = nil) throws -> Data {
         guard id > 0, id <= maximumSafeInteger else { throw RemoteRelayError.invalidInput }
         let params: [String: Any]
         switch method {
@@ -45,12 +45,23 @@ public struct RemoteRelayCodec {
         case "thread/list":
             guard (cursor?.utf8.count ?? 0) <= 4096 else { throw RemoteRelayError.invalidInput }
             params = ["limit": 20, "cursor": cursor as Any? ?? NSNull(), "currentAccountOnly": true]
-        case "thread/read":
-            guard let threadID, !threadID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, threadID.utf8.count <= 512 else { throw RemoteRelayError.invalidInput }
-            params = ["threadId": threadID, "includeTurns": false]
+        case "thread/read", "thread/resume":
+            guard let threadID, validIdentifier(threadID) else { throw RemoteRelayError.invalidInput }
+            params = method == "thread/read" ? ["threadId": threadID, "includeTurns": true] : ["threadId": threadID]
+        case "turn/start":
+            guard let threadID, validIdentifier(threadID), let text,
+                  !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, text.count <= 2000 else { throw RemoteRelayError.invalidInput }
+            params = ["threadId": threadID, "input": [["type": "text", "text": text, "text_elements": []] as [String: Any]]]
+        case "turn/interrupt":
+            guard let threadID, validIdentifier(threadID), let turnID, validIdentifier(turnID) else { throw RemoteRelayError.invalidInput }
+            params = ["threadId": threadID, "turnId": turnID]
         default: throw RemoteRelayError.unsupportedMethod
         }
         return try JSONSerialization.data(withJSONObject: ["id": id, "method": method, "params": params])
+    }
+
+    public static func validIdentifier(_ value: String) -> Bool {
+        !value.isEmpty && value.utf8.count <= 512 && value.unicodeScalars.allSatisfy { !CharacterSet.whitespacesAndNewlines.contains($0) && !CharacterSet.controlCharacters.contains($0) }
     }
 
     public mutating func envelope(_ message: Data) throws -> Data {
@@ -69,7 +80,7 @@ public struct RemoteRelayCodec {
     }
 
     /// Returns only the correlated response. ACKs never resolve a request.
-    /// ponytail: single in-flight read avoids ambiguous un-IDed relay errors.
+    /// One in-flight RPC; an un-IDed relay error never proves mutation failure.
     public mutating func receive(_ data: Data) throws -> Data? {
         let frame = try Self.object(data)
         guard let type = frame["type"] as? String else { throw RemoteRelayError.malformedFrame }
@@ -89,12 +100,11 @@ public struct RemoteRelayCodec {
             if sequence <= lastServerSequence { return nil }
             guard sequence == lastServerSequence + 1 else { throw RemoteRelayError.sequenceGap }
         }
-        guard var message = frame["message"] as? [String: Any] else { throw RemoteRelayError.malformedFrame }
+        guard let message = frame["message"] as? [String: Any] else { throw RemoteRelayError.malformedFrame }
         lastServerSequence = sequence
         if message["type"] as? String == "error", message["id"] == nil {
-            guard let pendingID else { throw RemoteRelayError.remoteFailure }
-            message.removeValue(forKey: "type")
-            message = ["id": pendingID, "error": message]
+            // No request ID means no proof that a mutation failed before execution.
+            throw RemoteRelayError.remoteFailure
         }
         // Notifications and host-initiated requests are not read results.
         guard message["method"] == nil, let rawID = message["id"], let pendingID else { return nil }
@@ -127,13 +137,15 @@ public actor RemoteRelay {
     private var nextID = 1
     private var initialized = false
     private var connecting = false
+    private var operationInProgress = false
+    private var resumedThreadID: String?
 
     public init() {}
 
     public func connect(accessToken: String, accountID: String, record: RemoteEnrollmentRecord,
                         session authorization: RemoteControlSession, environmentID: String,
                         signer: @escaping Signer) async throws {
-        guard socket == nil, !connecting else { throw RemoteRelayError.busy }
+        guard socket == nil, !connecting, !operationInProgress else { throw RemoteRelayError.busy }
         let now = Int64(Date().timeIntervalSince1970)
         _ = try RemoteSigning.validateSession(record: record, session: authorization, nowEpoch: now)
         guard [accessToken, accountID, record.clientId, authorization.remoteControlToken].allSatisfy(Self.headerSafe) else {
@@ -192,24 +204,62 @@ public actor RemoteRelay {
 
     public func listThreads(cursor: String? = nil) async throws -> Data {
         guard initialized else { throw RemoteRelayError.notInitialized }
+        guard !operationInProgress else { throw RemoteRelayError.busy }
         return try await rpc(method: "thread/list", cursor: cursor)
     }
 
     public func readThread(id: String) async throws -> Data {
         guard initialized else { throw RemoteRelayError.notInitialized }
+        guard !operationInProgress else { throw RemoteRelayError.busy }
         return try await rpc(method: "thread/read", threadID: id)
     }
+
+    /// Explicitly attach only the caller-selected existing thread. No overrides.
+    public func resumeThread(id: String) async throws -> Data {
+        guard initialized else { throw RemoteRelayError.notInitialized }
+        guard !operationInProgress else { throw RemoteRelayError.busy }
+        operationInProgress = true
+        defer { operationInProgress = false }
+        resumedThreadID = nil
+        let response = try await rpc(method: "thread/resume", threadID: id)
+        _ = try RemoteThread.decodeRead(response, expectedThreadID: id)
+        resumedThreadID = id
+        return response
+    }
+
+    public func startTurn(threadID: String, text: String) async throws -> Data {
+        guard initialized else { throw RemoteRelayError.notInitialized }
+        guard !operationInProgress else { throw RemoteRelayError.busy }
+        guard resumedThreadID == threadID else { throw RemoteRelayError.staleSelection }
+        operationInProgress = true
+        defer { operationInProgress = false }
+        return try await rpc(method: "turn/start", threadID: threadID, text: text)
+    }
+
+    /// Re-read immediately before stopping; never substitute a newer running turn.
+    public func interruptTurn(threadID: String, turnID: String) async throws -> Data {
+        guard initialized else { throw RemoteRelayError.notInitialized }
+        guard !operationInProgress else { throw RemoteRelayError.busy }
+        operationInProgress = true
+        defer { operationInProgress = false }
+        let response = try await rpc(method: "thread/read", threadID: threadID)
+        let thread = try RemoteThread.decodeRead(response, expectedThreadID: threadID)
+        guard thread.state == .running, thread.currentTurnID == turnID else { throw RemoteRelayError.staleSelection }
+        return try await rpc(method: "turn/interrupt", threadID: threadID, turnID: turnID)
+    }
+
+    public func isConnected() -> Bool { initialized && socket != nil }
 
     public func disconnect() {
         fail(RemoteRelayError.disconnected)
     }
 
-    private func rpc(method: String, cursor: String? = nil, threadID: String? = nil) async throws -> Data {
+    private func rpc(method: String, cursor: String? = nil, threadID: String? = nil, turnID: String? = nil, text: String? = nil) async throws -> Data {
         guard let socket, var codec else { throw RemoteRelayError.disconnected }
         guard pending == nil else { throw RemoteRelayError.busy }
         guard nextID <= RemoteRelayCodec.maximumSafeInteger else { throw RemoteRelayError.invalidInput }
         let id = nextID; nextID += 1
-        let frame = try codec.envelope(RemoteRelayCodec.request(id: id, method: method, cursor: cursor, threadID: threadID))
+        let frame = try codec.envelope(RemoteRelayCodec.request(id: id, method: method, cursor: cursor, threadID: threadID, turnID: turnID, text: text))
         self.codec = codec
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
@@ -256,13 +306,11 @@ public actor RemoteRelay {
         socket?.cancel(with: .goingAway, reason: nil); socket = nil
         session?.invalidateAndCancel(); session = nil
         reader?.cancel(); reader = nil; timeout?.cancel(); timeout = nil
-        initialized = false; codec = nil
+        initialized = false; codec = nil; resumedThreadID = nil
         // A socket failure or timeout cannot prove whether a dispatched request ran.
         if let pending {
             let reported: Error
-            if error as? RemoteRelayError == .chunksUnsupported || error as? RemoteRelayError == .frameTooLarge {
-                reported = error
-            } else { reported = RemoteRelayError.outcomeUnknown(requestID: pendingID ?? 0) }
+            reported = RemoteRelayError.outcomeUnknown(requestID: pendingID ?? 0)
             pending.resume(throwing: reported)
         }
         pending = nil; pendingID = nil

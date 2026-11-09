@@ -1,15 +1,17 @@
 import Foundation
 
 // Observed rcodex contract, not a provider-approved iOS authorization mechanism.
-// Callers must obtain these values from an approved, app-specific OAuth flow.
+// Values come only from the explicit native experimental OAuth flow.
 // There is deliberately no paste/import/desktop credential path in this app.
 struct RemoteAccountAuthorization {
     let accessToken: String
     let accountID: String
     let accountUserID: String
+    var tokenUserID: String? = nil
+    func accepts(_ value: String) -> Bool { value == accountUserID || value == tokenUserID }
 
     func validate() throws {
-        for value in [accessToken, accountID, accountUserID] {
+        for value in [accessToken, accountID, accountUserID] + [tokenUserID].compactMap({ $0 }) {
             guard !value.isEmpty, value.utf8.count <= 16_384,
                   value.utf8.allSatisfy({ $0 >= 0x21 && $0 <= 0x7e }) else {
                 throw RemoteAPIError.invalidInput
@@ -45,7 +47,20 @@ struct RemoteEnrollmentStart: Decodable {
     }
 }
 
-struct RemoteHost: Decodable, Identifiable {
+struct RemoteEnrollmentFinish: Decodable {
+    let accountUserID: String
+    let clientID: String
+    let scopes: [String]
+    enum CodingKeys: String, CodingKey {
+        case accountUserID = "account_user_id", clientID = "client_id", scopes
+    }
+    func validate(record: RemoteEnrollmentRecord) throws {
+        guard accountUserID == record.accountUserId, clientID == record.clientId,
+              scopes == [RemoteSigning.sessionScope] else { throw RemoteAPIError.accountMismatch }
+    }
+}
+
+struct RemoteHost: Decodable, Identifiable, Sendable {
     let envID: String
     let displayName: String?
     let hostName: String?
@@ -111,8 +126,8 @@ final class RemoteAPI {
     }
 
     func finishEnrollment(record: RemoteEnrollmentRecord, stepUpToken: String,
-                          proof: RemoteDeviceKeyProof) async throws -> RemoteControlSession {
-        guard record.accountUserId == authorization.accountUserID,
+                          proof: RemoteDeviceKeyProof) async throws -> RemoteEnrollmentFinish {
+        guard authorization.accepts(record.accountUserId),
               !stepUpToken.isEmpty, stepUpToken.utf8.count <= 16_384,
               !stepUpToken.contains(where: { $0.isWhitespace || $0.isNewline }) else {
             throw RemoteAPIError.invalidInput
@@ -122,17 +137,17 @@ final class RemoteAPI {
             "protection_class": record.protectionClass,
             "public_key_spki_der_base64": record.publicKeySpkiDerBase64
         ]
-        let result: RemoteControlSession = try await decode("POST", path: "/codex/remote/control/client/enroll/finish", body: [
+        let result: RemoteEnrollmentFinish = try await decode("POST", path: "/codex/remote/control/client/enroll/finish", body: [
             "client_id": record.clientId, "step_up_token": stepUpToken,
             "device_identity": identity, "device_key_proof": try encodedObject(proof)
         ])
-        do { _ = try RemoteSigning.validateSession(record: record, session: result, nowEpoch: Self.now) }
+        do { try result.validate(record: record) }
         catch { throw RemoteAPIError.outcomeUnknown }
         return result
     }
 
     func startRefresh(record: RemoteEnrollmentRecord) async throws -> RemoteEnrollmentStart {
-        guard record.accountUserId == authorization.accountUserID else { throw RemoteAPIError.accountMismatch }
+        guard authorization.accepts(record.accountUserId) else { throw RemoteAPIError.accountMismatch }
         let start: RemoteEnrollmentStart = try await decode("POST", path: "/codex/remote/control/client/refresh/start", body: ["client_id": record.clientId])
         try Self.validateEnrollmentStart(start, authorization: authorization, refresh: true, nowEpoch: Self.now)
         guard start.clientID == record.clientId else { throw RemoteAPIError.accountMismatch }
@@ -142,7 +157,7 @@ final class RemoteAPI {
     }
 
     func finishRefresh(record: RemoteEnrollmentRecord, proof: RemoteDeviceKeyProof) async throws -> RemoteControlSession {
-        guard record.accountUserId == authorization.accountUserID else { throw RemoteAPIError.accountMismatch }
+        guard authorization.accepts(record.accountUserId) else { throw RemoteAPIError.accountMismatch }
         let result: RemoteControlSession = try await decode("POST", path: "/codex/remote/control/client/refresh/finish", body: [
             "client_id": record.clientId, "device_key_proof": try encodedObject(proof)
         ])
@@ -218,7 +233,7 @@ final class RemoteAPI {
     static func validateEnrollmentStart(_ start: RemoteEnrollmentStart, authorization: RemoteAccountAuthorization,
                                         refresh: Bool, nowEpoch: Int64) throws {
         try authorization.validate()
-        guard start.accountUserID == authorization.accountUserID,
+        guard authorization.accepts(start.accountUserID),
               start.challenge.accountUserId == start.accountUserID,
               start.challenge.clientId == start.clientID else { throw RemoteAPIError.accountMismatch }
         let challenge = start.challenge
