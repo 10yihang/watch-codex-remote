@@ -17,7 +17,7 @@ def rawdict(fields): return '{ ' + ' '.join(f'{k} = {v};' for k,v in fields.item
 
 shared = ['Shared/Core.swift', 'Shared/Connectivity.swift', 'Shared/CompanionStore.swift']
 remote = ['Shared/RemoteSigning.swift', 'Shared/RemoteRelay.swift', 'Shared/RemoteAPI.swift']
-sources = {'Phone': shared + remote + ['iPhone/PhoneApp.swift', 'iPhone/PhoneRootView.swift', 'iPhone/RemoteDeviceKey.swift', 'iPhone/RemoteDiagnostics.swift'],
+sources = {'Phone': shared + remote + ['iPhone/PhoneApp.swift', 'iPhone/PhoneRootView.swift', 'iPhone/RemoteDeviceKey.swift', 'iPhone/RemoteDiagnostics.swift', 'iPhone/CodexPlanOAuth.swift', 'iPhone/CodexPlanTokenStore.swift', 'iPhone/CodexOAuthCallbackServer.swift', 'iPhone/CodexOAuthSafariPresenter.swift'],
            'Watch': shared + ['Watch/WatchApp.swift', 'Watch/WatchRootView.swift']}
 for source in sorted(set(sum(sources.values(), []))):
     obj(source, 'PBXFileReference', lastKnownFileType='sourcecode.swift', path=q(source), sourceTree=q('<group>'))
@@ -72,7 +72,7 @@ for key, fields in objects.items(): lines.append(key+' = '+rawdict(fields)+';')
 lines += ['};',f'rootObject = {uid("project")};','}']
 (ROOT/'WatchCodex.xcodeproj/project.pbxproj').write_text('\n'.join(lines)+'\n')
 base={'CFBundleDevelopmentRegion':'zh-Hans','CFBundleDisplayName':'Codex Remote','CFBundleExecutable':'$(EXECUTABLE_NAME)','CFBundleIdentifier':'$(PRODUCT_BUNDLE_IDENTIFIER)','CFBundleInfoDictionaryVersion':'6.0','CFBundleName':'$(PRODUCT_NAME)','CFBundlePackageType':'APPL','CFBundleShortVersionString':'$(MARKETING_VERSION)','CFBundleVersion':'$(CURRENT_PROJECT_VERSION)'}
-phone={**base,'LSRequiresIPhoneOS':True,'UIApplicationSceneManifest':{'UIApplicationSupportsMultipleScenes':False},'UILaunchScreen':{},'UISupportedInterfaceOrientations':['UIInterfaceOrientationPortrait','UIInterfaceOrientationLandscapeLeft','UIInterfaceOrientationLandscapeRight']}
+phone={**base,'CodexOAuthEnabled':False,'CodexOAuthClientID':'','CodexOAuthScope':'','LSRequiresIPhoneOS':True,'UIApplicationSceneManifest':{'UIApplicationSupportsMultipleScenes':False},'UILaunchScreen':{},'UISupportedInterfaceOrientations':['UIInterfaceOrientationPortrait','UIInterfaceOrientationLandscapeLeft','UIInterfaceOrientationLandscapeRight']}
 watch={**base,'WKApplication':True,'WKCompanionAppBundleIdentifier':'org.example.watchcodex','WKRunsIndependentlyOfCompanionApp':False}
 for folder, value in [('iPhone',phone),('Watch',watch)]:
     (ROOT/folder/'Info.plist').write_bytes(plistlib.dumps(value,sort_keys=False))

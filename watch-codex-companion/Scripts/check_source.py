@@ -31,7 +31,7 @@ class SourceChecks(unittest.TestCase):
         for source in re.findall(r'path = "([^"]+\.swift)";', self.project):
             self.assertTrue((ROOT/source).is_file(), source)
         self.assertEqual(self.project.count('isa = PBXSourcesBuildPhase;'), 2)
-        self.assertEqual(self.project.count('isa = PBXBuildFile;'), 18)  # 15 source + 2 assets + 1 embed
+        self.assertEqual(self.project.count('isa = PBXBuildFile;'), 22)  # 19 source + 2 assets + 1 embed
     def test_companion_bundle_identifiers_match(self):
         watch = plistlib.loads((ROOT/'Watch/Info.plist').read_bytes())
         self.assertTrue(watch['WKApplication'])
@@ -54,10 +54,10 @@ class SourceChecks(unittest.TestCase):
     def test_remote_implementation_cannot_borrow_desktop_auth(self):
         sources = '\n'.join(path.read_text() for folder in ['Shared', 'iPhone', 'Watch'] for path in (ROOT/folder).glob('*.swift'))
         for forbidden in ['auth.json', 'app_EMoamEEZ73f0CkXaXp7hrann', 'ASWebAuthenticationSession',
-                          'UserDefaults.standard', 'refresh_token', 'NSAllowsArbitraryLoads']:
+                          'UserDefaults.standard', 'codex_cli_simplified_flow', 'NSAllowsArbitraryLoads']:
             self.assertNotIn(forbidden,sources)
         ui = '\n'.join((ROOT/p).read_text() for p in ['iPhone/PhoneApp.swift', 'iPhone/PhoneRootView.swift', 'Shared/CompanionStore.swift'])
-        for forbidden in ['RemoteAPI(', 'RemoteRelay(', 'RemoteDeviceKey.create(']:
+        for forbidden in ['RemoteAPI(', 'RemoteRelay(', 'RemoteDeviceKey.create(', 'CodexPlanOAuth(', '.signIn(', 'CodexPlanTokenStore(']:
             self.assertNotIn(forbidden, ui)
     def test_remote_transport_is_read_only_and_redirects_are_denied(self):
         relay = (ROOT/'Shared/RemoteRelay.swift').read_text()
@@ -70,6 +70,8 @@ class SourceChecks(unittest.TestCase):
         self.assertIn('maximumMessageSize', relay)
         self.assertIn('outcomeUnknown', relay)
         self.assertIn('guard data.count < Self.maxResponseBytes', api)
+    def test_native_auth_guardrails(self):
+        subprocess.run([sys.executable, str(ROOT/'Scripts/check_native_auth.py')], check=True, capture_output=True)
     def test_device_key_guardrails(self):
         subprocess.run([sys.executable, str(ROOT/'Scripts/check_device_key.py')], check=True, capture_output=True)
     def test_new_native_remote_tests_are_in_swift_package(self):

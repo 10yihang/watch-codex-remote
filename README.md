@@ -6,6 +6,10 @@ Native SwiftUI iPhone and Apple Watch companion prototype, plus an offline proto
 
 The new Swift layer implements device signing, Secure Enclave key storage, enrollment/pairing HTTP requests and read-only relay access to existing threads. It stays inactive until an approved app-specific Remote authorization flow exists. See [implementation, blocker and validation status](watch-codex-companion/Docs/REMOTE_IMPLEMENTATION.md). This candidate has not yet passed an Apple build.
 
+## Local native OAuth preparation
+
+A dormant iPhone OAuth implementation adapted from MIT-licensed NightBlood Remote is included for review. Its configuration is disabled and empty, it has no UI or launch call sites, and it does not enroll or pair a device. No Swift build or live authentication has been verified for this candidate. See [the source comparison, exact scope and validation checklist](watch-codex-companion/Docs/NATIVE_AUTH_ASSESSMENT.md).
+
 ## Project
 
 - [`watch-codex-companion`](watch-codex-companion/README.md): Xcode project, WatchConnectivity demo, Swift core tests and device checklist.
@@ -35,3 +39,6 @@ bash watch-codex-companion/Scripts/verify_apple.sh
 ## Third-party source
 
 The probe includes reference files from rcodex (MIT) and OpenAI Codex (Apache-2.0). Their licenses and pinned source revisions are preserved under `watch-codex-probe/upstream/` and documented in the probe README. The source files are references for offline tests, not an installed or executed Remote client.
+
+
+The native OAuth preparation preserves NightBlood Remote’s MIT license and notices under `watch-codex-companion/ThirdParty/NightBloodRemote/`. It does not include NightBlood branding, voice, CarPlay or desktop transcript integration.
