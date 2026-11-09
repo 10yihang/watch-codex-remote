@@ -195,6 +195,20 @@ class SourceChecks(unittest.TestCase):
         self.assertIn('case .frameTooLarge:', controller)
         self.assertIn('operationStage + "：" + Self.safeMessage(error)', controller)
 
+    def test_watch_native_accent_is_bright_in_every_appearance(self):
+        uid = lambda key: hashlib.sha256(key.encode()).hexdigest()[:24].upper()
+        for mode in ['Debug', 'Release']:
+            for target, accent in [('Phone', 'AccentColor'), ('Watch', 'WatchAccent')]:
+                line = next(line for line in self.project.splitlines() if line.startswith(uid(target+mode)+' = '))
+                self.assertIn('ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "'+accent+'"', line)
+        data = json.loads((ROOT/'Shared/Assets.xcassets/WatchAccent.colorset/Contents.json').read_text())
+        for item in data['colors']:
+            c = item['color']['components']
+            rgb = [float(c[k]) for k in ['red', 'green', 'blue']]
+            linear = [v/12.92 if v <= 0.04045 else ((v+0.055)/1.055)**2.4 for v in rgb]
+            luminance = sum(a*b for a,b in zip(linear, [0.2126, 0.7152, 0.0722]))
+            self.assertGreaterEqual((luminance+0.05)/0.05, 4.5)
+
     def test_generator_is_deterministic(self):
         # Never regenerate in the original checkout: it may contain local signing IDs.
         files = ['WatchCodex.xcodeproj/project.pbxproj', 'iPhone/Info.plist', 'Watch/Info.plist',

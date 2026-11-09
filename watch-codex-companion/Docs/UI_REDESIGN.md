@@ -24,7 +24,7 @@ One existing misleading control is corrected: `controller.refresh()` reads an al
 
 Local source checks passed:
 
-- `Scripts/check_source.py`: 28 checks in the combined candidate (including nested UI checks).
+- `Scripts/check_source.py`: 29 checks in the combined candidate (including nested UI checks).
 - `Scripts/check_native_auth.py`: 12 checks.
 - `Scripts/check_bundle_configuration.py`: 5 checks.
 - `Scripts/check_live_ui.py`: 11 UI source invariants.
@@ -35,6 +35,8 @@ These checks do not compile Swift or render UI. The local Apple verification com
 ## Published build and screenshot review
 
 Code `5530409` passed [cloud run 42674539496](https://github.com/10yihang/watch-codex-remote/actions/runs/42674539496): 80 Swift tests, both unsigned simulator builds and processed bundle-ID checks. Actual iPhone light/dark/accessibility-large and 49 mm/42 mm Watch setup PNGs were inspected. They show only unconnected setup, not connected threads or device authentication. Review found low contrast on dark iPhone prominent labels and the Watch navigation title; the follow-up changes only these colors and requires its own refreshed screenshots.
+
+The next [run for `2e4d150`](https://github.com/10yihang/watch-codex-remote/actions/runs/42677366668) also passed 80 tests and both builds. Its screenshots confirm corrected dark iPhone button text. Watch navigation still used the compiled light accent despite view-level overrides. A dedicated bright `WatchAccent` asset is now selected only for the Watch target's global accent; Phone keeps its original light/dark `AccentColor`. That final target-level change requires refreshed evidence.
 
 ## Next Apple verification
 

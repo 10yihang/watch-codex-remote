@@ -37,7 +37,7 @@ for name in ['Phone','Watch']:
     configs=[]
     for mode in ['Debug','Release']:
         settings={
-            'ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME':q('AccentColor'), 'CODE_SIGN_STYLE':q('Automatic'), 'DEVELOPMENT_TEAM':q(''),
+            'ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME':q('WatchAccent' if name=='Watch' else 'AccentColor'), 'CODE_SIGN_STYLE':q('Automatic'), 'DEVELOPMENT_TEAM':q(''),
             'PRODUCT_BUNDLE_IDENTIFIER':q('$(WATCH_CODEX_PHONE_BUNDLE_ID)' + ('.watchkitapp' if name=='Watch' else '')),
             'PRODUCT_NAME':q('$(TARGET_NAME)'), 'INFOPLIST_FILE':q(('Watch' if name=='Watch' else 'iPhone')+'/Info.plist'),
             'GENERATE_INFOPLIST_FILE':'NO', 'SWIFT_VERSION':'5.0', 'SWIFT_STRICT_CONCURRENCY':'minimal',
