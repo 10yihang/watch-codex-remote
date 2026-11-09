@@ -7,6 +7,8 @@ import json
 import plistlib
 import re
 import subprocess
+import shutil
+import tempfile
 import sys
 import unittest
 import xml.etree.ElementTree as ET
@@ -31,15 +33,9 @@ class SourceChecks(unittest.TestCase):
         for source in re.findall(r'path = "([^"]+\.swift)";', self.project):
             self.assertTrue((ROOT/source).is_file(), source)
         self.assertEqual(self.project.count('isa = PBXSourcesBuildPhase;'), 2)
-        self.assertEqual(self.project.count('isa = PBXBuildFile;'), 33)  # 30 source + 2 assets + 1 embed
+        self.assertEqual(self.project.count('isa = PBXBuildFile;'), 34)  # 31 source + 2 assets + 1 embed
     def test_companion_bundle_identifiers_match(self):
-        watch = plistlib.loads((ROOT/'Watch/Info.plist').read_bytes())
-        self.assertTrue(watch['WKApplication'])
-        self.assertFalse(watch['WKRunsIndependentlyOfCompanionApp'])
-        self.assertEqual(watch['WKCompanionAppBundleIdentifier'], 'org.example.watchcodex')
-        self.assertIn('PRODUCT_BUNDLE_IDENTIFIER = "org.example.watchcodex";', self.project)
-        self.assertIn('PRODUCT_BUNDLE_IDENTIFIER = "org.example.watchcodex.watchkitapp";', self.project)
-        self.assertNotIn('DEVELOPMENT_TEAM = "A', self.project)
+        subprocess.run([sys.executable, str(ROOT/'Scripts/check_bundle_configuration.py')], check=True, capture_output=True)
     def test_embed_phase_and_dependency_exist(self):
         self.assertIn('dstPath = "$(CONTENTS_FOLDER_PATH)/Watch"; dstSubfolderSpec = 16;', self.project)
         self.assertEqual(self.project.count('isa = PBXTargetDependency;'), 1)
@@ -178,10 +174,24 @@ class SourceChecks(unittest.TestCase):
             ratio=(lum+0.05)/0.05 if dark else 1.05/(lum+0.05)
             self.assertGreaterEqual(ratio,4.5)
     def test_generator_is_deterministic(self):
-        files=[ROOT/'WatchCodex.xcodeproj/project.pbxproj',ROOT/'iPhone/Info.plist',ROOT/'Watch/Info.plist']
-        before=[hashlib.sha256(p.read_bytes()).hexdigest() for p in files]
-        subprocess.run([sys.executable,str(ROOT/'Scripts/generate_project.py')],check=True,capture_output=True)
-        self.assertEqual(before,[hashlib.sha256(p.read_bytes()).hexdigest() for p in files])
+        # Never regenerate in the original checkout: it may contain local signing IDs.
+        files = ['WatchCodex.xcodeproj/project.pbxproj', 'iPhone/Info.plist', 'Watch/Info.plist',
+                 'WatchCodex.xcodeproj/xcshareddata/xcschemes/WatchCodexPhone.xcscheme',
+                 'WatchCodex.xcodeproj/xcshareddata/xcschemes/WatchCodexWatch.xcscheme']
+        with tempfile.TemporaryDirectory(prefix='watchcodex-template-') as directory:
+            sandbox = Path(directory)
+            (sandbox/'Scripts').mkdir()
+            shutil.copy2(ROOT/'Scripts/generate_project.py', sandbox/'Scripts/generate_project.py')
+            for name in files:
+                (sandbox/name).parent.mkdir(parents=True, exist_ok=True)
+            command = [sys.executable, str(sandbox/'Scripts/generate_project.py')]
+            subprocess.run(command, check=True, capture_output=True)
+            first = [(sandbox/name).read_bytes() for name in files]
+            subprocess.run(command, check=True, capture_output=True)
+            self.assertEqual(first, [(sandbox/name).read_bytes() for name in files])
+            for name, generated in zip(files, first):
+                self.assertEqual((ROOT/name).read_bytes(), generated,
+                                 name + ': source template differs; personalized project was not modified')
     def test_swift_tests_present_but_not_claimed_executed(self):
         tests=(ROOT/'Tests/CompanionCoreTests/CoreTests.swift').read_text()
         self.assertEqual(len(re.findall(r'func test\w+\(',tests)),18)

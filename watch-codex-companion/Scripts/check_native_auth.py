@@ -50,13 +50,29 @@ class NativeAuthSourceChecks(unittest.TestCase):
                      'codes.count == 1', 'Cache-Control: no-store']:
             self.assertIn(text, self.callback)
     def test_cancellation_and_foreground_boundaries_are_present(self):
-        for text in ['UIApplication.didEnterBackgroundNotification', 'networkTask?.cancel()',
+        for text in ['waitUntilForeground(operationID)', 'networkTask?.cancel()',
                      'await callbackServer?.cancel()', 'await dismissSafari()',
                      'try ensureActive(operationID)', 'withTaskCancellationHandler']:
             self.assertIn(text, self.oauth)
-    def test_background_event_discards_notification_before_iteration(self):
-        self.assertIn(').map { _ in () }', self.oauth)
-        self.assertIn('for await _ in backgroundEvents', self.oauth)
+    def test_mfa_app_switch_preserves_only_interactive_authorization(self):
+        self.assertNotIn('didEnterBackgroundNotification', self.oauth)
+        self.assertNotIn('foregroundWatchTask', self.oauth)
+        self.assertIn('sessionWindow = window', self.oauth)
+        self.assertIn('try sessionWindow.validate()', self.oauth)
+        self.assertIn('UIApplication.shared.applicationState == .active', self.oauth)
+        self.assertIn('try await Task.sleep(for: .milliseconds(200))', self.oauth)
+        self.assertEqual(self.oauth.count('let code = try await server.waitForAuthorizationCode()\n                try await waitUntilForeground(operationID)'), 2)
+        app = (ROOT/'iPhone/PhoneApp.swift').read_text()
+        self.assertIn('controller.applicationDidEnterBackground()', app)
+        self.assertNotIn('controller.disconnect()', app)
+        controller = (ROOT/'iPhone/RemoteConnectionController.swift').read_text()
+        self.assertIn('guard interactiveAuthorization else { disconnect(); return }', controller)
+        self.assertEqual(controller.count('try await self.withInteractiveAuthorization {'), 2)
+        self.assertIn('defer { interactiveAuthorization = false }', controller)
+        self.assertIn('func cancel() { disconnect() }', controller)
+        self.assertIn('try self.checkForeground()\n            try stepUp.validate()', controller)
+        self.assertNotIn('beginBackgroundTask', self.oauth + controller)
+        self.assertNotIn('ASWebAuthenticationSession', self.oauth)
     def test_safari_does_not_wait_on_animation_completion(self):
         source = self.auth['CodexOAuthSafariPresenter.swift']
         for text in ['presenter.presentedViewController == nil', '!presenter.isBeingPresented',

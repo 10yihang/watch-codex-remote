@@ -2,6 +2,8 @@
 
 Prepared from public main `f7de9114fbfa6f64c768464988d507de8bb40e93`. With owner approval, code commit `eac3ae078314628154787fc7a8a6dcbb405a02b6` was published and [cloud run 42661689146](https://github.com/10yihang/watch-codex-remote/actions/runs/42661689146) passed on 2026-11-09. No live login, credential creation, enrollment or production Remote request was performed.
 
+**MFA/bundle follow-up requires separate validation:** the MFA app-switch and bundle-configuration changes in this working copy are not covered by that cloud run. See [MFA_RECOVERY.md](MFA_RECOVERY.md).
+
 ## What is now wired
 
 The initial iPhone tab and Watch page are the real route, initially empty/disconnected. The old demo remains separate and labeled. The live code is not a simulation:
@@ -22,13 +24,13 @@ The journal records enrollment/pairing/revocation unknown states before the corr
 
 A failed or cancelled enrollment does not automatically erase a possibly registered key. Recovery is deliberately explicit: use the existing controller's revoke action with the same account, or inspect/revoke that controller in the service's account controls. Do not repeatedly enroll to guess the result. There is not yet a richer enrollment reconciliation UI.
 
-App backgrounding/cancellation serializes teardown before allowing another operation. No automatic reconnect, background relay, notification wake or queued Watch mutations. The current UX requires an unlocked foreground iPhone.
+Explicit cancellation and backgrounding during Remote operations serialize teardown before allowing another operation. The interactive browser sign-in/step-up phase is an exception: temporary MFA app switching retains the same page, PKCE/state and fixed ten-minute login window. It does not keep a relay alive or preserve state across process termination. No automatic reconnect, background relay, notification wake or queued Watch mutations. The current UX requires an unlocked foreground iPhone.
 
 ## Compatibility assumptions and limits
 
 This is an unofficial integration, not OpenAI approval. The pinned NightBlood source reports a working iPhone route, but that report is not validation of this app, its signing team or current service behavior. Public client ID availability is not a guarantee of accepted scope/redirect/enrollment/relay access. Token payload checks are routing/consistency checks, not cryptographic JWT verification; the HTTPS service remains authoritative.
 
-- Both simulator targets compile with Xcode 16.4. Physical hardware and live service behavior remain unverified.
+- The previous application code `eac3ae0` compiled for both simulator targets with Xcode 16.4. The subsequent MFA/bundle changes have only local offline checks so far. Physical hardware and live service behavior remain unverified.
 - Secure Enclave enrollment requires a physical compatible iPhone. There is no software-key simulator fallback.
 - Maximum 20 recent threads. No pagination UI yet. Explicitly refresh for progress; app-server push notifications are not projected into UI.
 - The phone/Watch projection clips displayed text to keep messages bounded. It does not change thread/turn IDs or execution state.
@@ -36,7 +38,7 @@ This is an unofficial integration, not OpenAI approval. The pinned NightBlood so
 - Approval requests from the host are not handled here. Respond to them on the trusted host; no automatic approval or permission downgrade is attempted.
 - The app does not change development team, certificates, device trust or Developer Mode.
 
-## Verification completed here
+## Previous published verification (`eac3ae0`)
 
 - 26 Python source/project guardrails passed, including deterministic project generation, isolated live/demo protocols and device-key call-site checks.
 - 12 nested native OAuth source guardrails passed.
@@ -47,9 +49,9 @@ This is an unofficial integration, not OpenAI approval. The pinned NightBlood so
 
 ## Next acceptance gates
 
-1. **Completed:** owner-approved publication and cloud build for `eac3ae0`. All 70 Swift tests and both unsigned simulator targets passed. Documentation-only follow-ups do not change that tested application code.
+1. **Completed:** owner-approved publication and cloud build for `eac3ae0`. All 70 Swift tests and both unsigned simulator targets passed. Later MFA/bundle fixes need a new approved Apple build.
 2. Retain existing local bundle/signing settings. Verify phone bundle ID matches Watch's `WKCompanionAppBundleIdentifier`, both targets use the same development team, and installation succeeds. Do not regenerate over custom signing settings blindly.
-3. On an unlocked physical iPhone, confirm the experimental sign-in prompt. Verify cancel/back/background return cleanly, account continuity, Keychain restore and explicit refresh. Do not copy tokens or send credentials/screenshots containing them.
+3. On an unlocked physical iPhone, confirm the experimental sign-in prompt. Verify MFA app switch/return preserves the login page separately from explicit Cancel/back dismissal. Check timeout, cancellation followed by immediate re-login, process termination, account continuity, Keychain restore and explicit refresh. Do not copy tokens or send credentials/screenshots containing them.
 4. Explicitly enroll this phone. Verify system user-presence prompting, the exact returned account/client, revocation and interrupted/unknown recovery without replay.
 5. Enable Remote in the existing Codex desktop app as needed, generate a pairing code, confirm the intended host, then compare a real thread ID and content against the host. Only that proves actual connection.
 6. Choose a disposable existing test thread and harmless command. Confirm one send, then separately confirm an exact-current-turn stop. Check repeat taps, stale turns, disconnect, expiry, background, restart and a lost reply without duplicate execution.

@@ -26,6 +26,7 @@ final class RemoteConnectionController: ObservableObject {
     private var operation: Task<Void, Never>?
     private var operationID: UUID?
     private var presenter: CodexOAuthSafariViewControllerPresenter?
+    private var interactiveAuthorization = false
     private var reviewedMutationID: UUID?
     private var reviewedBinding: LiveBinding?
     private var reviewedAt: Date?
@@ -35,9 +36,13 @@ final class RemoteConnectionController: ObservableObject {
 
     func signIn() {
         run("正在打开 ChatGPT 登录…") {
+            guard !self.snapshot.connected else { throw RemoteConnectionError.busy }
             let existing = try RemoteConnectionJournal.load()
-            let tokens = try await self.oauth.signIn(expectedAccountID: existing?.accountID,
-                expectedAccountUserID: existing?.record.accountUserId, presentSafari: try self.presentation())
+            let tokens = try await self.withInteractiveAuthorization {
+                try await self.oauth.signIn(expectedAccountID: existing?.accountID,
+                    expectedAccountUserID: existing?.record.accountUserId, presentSafari: try self.presentation())
+            }
+            try self.checkForeground()
             try self.accept(tokens, matching: existing)
             if let existing {
                 guard existing.accountID == self.claims?.accountID,
@@ -86,8 +91,10 @@ final class RemoteConnectionController: ObservableObject {
             self.setJournal(saved)
             let payload = try RemoteSigning.enrollmentPayload(record: record, challenge: start.challenge,
                 refresh: false, nowEpoch: Self.now)
-            let stepUp = try await self.oauth.stepUp(accountID: claims.accountID, accountUserID: claims.accountUserID,
-                presentSafari: try self.presentation())
+            let stepUp = try await self.withInteractiveAuthorization {
+                try await self.oauth.stepUp(accountID: claims.accountID, accountUserID: claims.accountUserID,
+                    presentSafari: try self.presentation())
+            }
             try self.checkForeground()
             try stepUp.validate()
             let proof = try self.proof(record: record, challenge: start.challenge, payload: payload)
@@ -198,6 +205,23 @@ final class RemoteConnectionController: ObservableObject {
             self.needsReview = false; self.hosts = []; self.selectedHostID = nil
             self.status = "服务端撤销已确认，本机控制器密钥与登录令牌已清除。"
         }
+    }
+
+    /// A temporary MFA app switch must not act like the user pressed Cancel.
+    /// Real Remote operations retain their existing foreground-only behavior.
+    func applicationDidEnterBackground() {
+        guard interactiveAuthorization else { disconnect(); return }
+        connectionExpiry?.cancel(); connectionExpiry = nil
+        clearReview(); markDisconnected()
+        status = "已保留当前登录页。查看 MFA 后返回继续；登录窗口最长 10 分钟。"
+        // Sign-in starts only while disconnected; step-up runs before pairing.
+        // No live relay exists in either preserved interactive phase.
+    }
+
+    private func withInteractiveAuthorization<T>(_ action: () async throws -> T) async rethrows -> T {
+        interactiveAuthorization = true
+        defer { interactiveAuthorization = false }
+        return try await action()
     }
 
     func disconnect() {
@@ -424,7 +448,15 @@ final class RemoteConnectionController: ObservableObject {
         if let value = error as? RemoteAPIError { return value.localizedDescription }
         if let value = error as? RemoteConnectionError { return value.localizedDescription }
         if let value = error as? RemoteTokenClaimsError { return value.localizedDescription }
-        if error is CodexPlanOAuthError { return "登录或再次授权未完成。请核对登录页、取消状态和此 iPhone 的网络后重试。" }
+        if let auth = error as? CodexPlanOAuthError {
+            switch auth {
+            case .timedOut: return "本次登录已超时，请重新登录。查看 MFA 后需在 10 分钟内返回。"
+            case .cancelled: return "登录已取消。可以重新打开登录页。"
+            case .callbackListenerFailed, .callbackPortsUnavailable:
+                return "本机登录回调已中断或不可用。请重新打开登录；iOS 挂起或关闭 App 后可能需要重试。"
+            default: return "登录或再次授权未完成。请核对登录页和此 iPhone 的网络后重试。"
+            }
+        }
         if error is CancellationError { return "操作已取消；已发送操作的结果仍需核对。" }
         if error is RemoteDeviceKey.Failure { return "无法使用此 iPhone 的 Secure Enclave 密钥。请使用已解锁的真机并允许系统身份验证。" }
         if error is RemoteRelayError { return "Remote 通信失败。请核对桌面版本与权限；不会自动重发。" }

@@ -11,6 +11,8 @@ import re
 import subprocess
 import time
 
+from validate_bundle_products import read_bundle_pair
+
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / '.build' / 'screenshots'
 OUTPUT.mkdir(parents=True, exist_ok=True)
@@ -80,17 +82,18 @@ def main():
     products = ROOT / '.build' / 'apple' / 'Build' / 'Products'
     phone_app = products / 'Debug-iphonesimulator' / 'WatchCodexPhone.app'
     watch_app = products / 'Debug-watchsimulator' / 'WatchCodexWatch.app'
+    phone_bundle, watch_bundle = read_bundle_pair(phone_app, watch_app)
     metadata = {'commit': os.environ.get('GITHUB_SHA'), 'run_id': os.environ.get('GITHUB_RUN_ID'),
                 'created_at_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
                 'scope': 'Actual simulator screenshots of the unconnected experimental setup UI. No login or Remote request is performed. No physical-device or end-to-end connectivity verification.',
                 'captures': []}
     try:
-        metadata['captures'].append(capture(phone, phone_app, 'org.example.watchcodex', 'iphone-setup-light.png', 'light'))
-        metadata['captures'].append(capture(phone, phone_app, 'org.example.watchcodex', 'iphone-setup-dark.png', 'dark'))
-        metadata['captures'].append(capture(phone, phone_app, 'org.example.watchcodex', 'iphone-setup-accessibility.png', 'light', 'accessibility-large'))
-        metadata['captures'].append(capture(watch, watch_app, 'org.example.watchcodex.watchkitapp', 'watch-setup.png'))
+        metadata['captures'].append(capture(phone, phone_app, phone_bundle, 'iphone-setup-light.png', 'light'))
+        metadata['captures'].append(capture(phone, phone_app, phone_bundle, 'iphone-setup-dark.png', 'dark'))
+        metadata['captures'].append(capture(phone, phone_app, phone_bundle, 'iphone-setup-accessibility.png', 'light', 'accessibility-large'))
+        metadata['captures'].append(capture(watch, watch_app, watch_bundle, 'watch-setup.png'))
         if small_watch['udid'] != watch['udid']:
-            metadata['captures'].append(capture(small_watch, watch_app, 'org.example.watchcodex.watchkitapp', 'watch-setup-small.png'))
+            metadata['captures'].append(capture(small_watch, watch_app, watch_bundle, 'watch-setup-small.png'))
     finally:
         (OUTPUT / 'capture-evidence.json').write_text(json.dumps(metadata, ensure_ascii=False, indent=2))
     print('Captured actual simulator app screens. Human visual review is still required.')

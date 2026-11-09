@@ -1,0 +1,18 @@
+Native OAuth source checks only; no Swift, login, network or Keychain execution.
+test_auth_does_not_enroll_or_pair (__main__.NativeAuthSourceChecks.test_auth_does_not_enroll_or_pair) ... ok
+test_callback_is_loopback_bound_and_bounded (__main__.NativeAuthSourceChecks.test_callback_is_loopback_bound_and_bounded) ... ok
+test_cancellation_and_foreground_boundaries_are_present (__main__.NativeAuthSourceChecks.test_cancellation_and_foreground_boundaries_are_present) ... ok
+test_configuration_is_explicitly_experimental (__main__.NativeAuthSourceChecks.test_configuration_is_explicitly_experimental) ... ok
+test_keychain_cannot_weaken_protection_on_load (__main__.NativeAuthSourceChecks.test_keychain_cannot_weaken_protection_on_load) ... ok
+test_mfa_app_switch_preserves_only_interactive_authorization (__main__.NativeAuthSourceChecks.test_mfa_app_switch_preserves_only_interactive_authorization) ... ok
+test_mit_notice_is_preserved (__main__.NativeAuthSourceChecks.test_mit_notice_is_preserved) ... ok
+test_no_desktop_credential_import (__main__.NativeAuthSourceChecks.test_no_desktop_credential_import) ... ok
+test_only_phone_controller_launches_oauth (__main__.NativeAuthSourceChecks.test_only_phone_controller_launches_oauth) ... ok
+test_safari_does_not_wait_on_animation_completion (__main__.NativeAuthSourceChecks.test_safari_does_not_wait_on_animation_completion) ... ok
+test_sources_are_iphone_only (__main__.NativeAuthSourceChecks.test_sources_are_iphone_only) ... ok
+test_token_transport_rejects_redirects_and_bounds_stream (__main__.NativeAuthSourceChecks.test_token_transport_rejects_redirects_and_bounds_stream) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.003s
+
+OK

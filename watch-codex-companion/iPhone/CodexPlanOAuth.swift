@@ -73,7 +73,7 @@ public enum CodexPlanOAuthError: Error, LocalizedError, Sendable {
         case .applicationNotActive:
             "Codex sign-in can start only while Watch Codex is in the foreground."
         case .invalidTimeout:
-            "The Codex sign-in timeout must be greater than zero."
+            "The Codex sign-in timeout must be between zero and ten minutes."
         case .callbackPortsUnavailable:
             "Neither registered Codex callback port (1455 or 1457) is available."
         case .callbackListenerFailed:
@@ -91,7 +91,7 @@ public enum CodexPlanOAuthError: Error, LocalizedError, Sendable {
         case .browserPresenterUnavailable:
             "A view controller is not available to present Codex sign-in."
         case .timedOut:
-            "Codex sign-in timed out."
+            "登录已超过 10 分钟，请重新登录。临时切换 MFA 应用不会延长此期限。"
         case .cancelled:
             "Codex sign-in was cancelled."
         case .tokenTransportFailed:
@@ -177,7 +177,7 @@ public actor CodexPlanOAuth {
     private var callbackServer: CodexOAuthCallbackServer?
     private var safariSession: CodexOAuthSafariSession?
     private var networkTask: Task<(Data, URLResponse), Error>?
-    private var foregroundWatchTask: Task<Void, Never>?
+    private var sessionWindow: OAuthSessionWindow?
 
     public init(
         tokenStore: CodexPlanTokenStore = CodexPlanTokenStore(),
@@ -193,7 +193,7 @@ public actor CodexPlanOAuth {
     public func signIn(
         expectedAccountID: String? = nil,
         expectedAccountUserID: String? = nil,
-        timeout: Duration = .seconds(180),
+        timeout: Duration = OAuthSessionWindow.maximumTimeout,
         presentSafari: CodexOAuthSafariPresentation
     ) async throws -> CodexPlanTokens {
         guard CodexPlanOAuthConstants.enabled, !CodexPlanOAuthConstants.scope.isEmpty else {
@@ -202,10 +202,11 @@ public actor CodexPlanOAuth {
         guard !CodexPlanOAuthConstants.clientID.isEmpty else {
             throw CodexPlanOAuthError.missingOAuthClientID
         }
-        guard timeout > .zero else {
-            throw CodexPlanOAuthError.invalidTimeout
-        }
+        let window: OAuthSessionWindow
+        do { window = try OAuthSessionWindow(timeout: timeout) }
+        catch { throw CodexPlanOAuthError.invalidTimeout }
         let operationID = try await beginForegroundOperation()
+        sessionWindow = window
 
         return try await withTaskCancellationHandler {
             do {
@@ -235,7 +236,7 @@ public actor CodexPlanOAuth {
                 try ensureActive(operationID)
 
                 let code = try await server.waitForAuthorizationCode()
-                try ensureActive(operationID)
+                try await waitUntilForeground(operationID)
                 await dismissSafari()
 
                 let tokens = try await exchangeCode(
@@ -252,7 +253,9 @@ public actor CodexPlanOAuth {
                    identity.accountUserID != expectedAccountUserID && identity.tokenUserID != expectedAccountUserID {
                     throw RemoteTokenClaimsError.accountMismatch
                 }
+                try await waitUntilForegroundIfInteractive(operationID)
                 try await tokenStore.save(tokens)
+                try await waitUntilForegroundIfInteractive(operationID)
                 await finish(operationID: operationID)
                 return tokens
             } catch {
@@ -274,7 +277,7 @@ public actor CodexPlanOAuth {
     /// Separate fresh browser consent. Never saves step-up credentials over ordinary tokens.
     public func stepUp(
         accountID: String, accountUserID: String,
-        timeout: Duration = .seconds(180),
+        timeout: Duration = OAuthSessionWindow.maximumTimeout,
         presentSafari: CodexOAuthSafariPresentation
     ) async throws -> CodexRemoteStepUpToken {
         guard CodexPlanOAuthConstants.enabled, !CodexPlanOAuthConstants.scope.isEmpty else {
@@ -283,9 +286,9 @@ public actor CodexPlanOAuth {
         guard !CodexPlanOAuthConstants.clientID.isEmpty else {
             throw CodexPlanOAuthError.missingOAuthClientID
         }
-        guard timeout > .zero else {
-            throw CodexPlanOAuthError.invalidTimeout
-        }
+        let window: OAuthSessionWindow
+        do { window = try OAuthSessionWindow(timeout: timeout) }
+        catch { throw CodexPlanOAuthError.invalidTimeout }
         guard let ordinary = try await tokenStore.load() else { throw CodexPlanOAuthError.noStoredTokens }
         let identity = try RemoteTokenClaims.parseOrdinary(accessToken: ordinary.accessToken,
             expectedClientID: CodexPlanOAuthConstants.clientID)
@@ -293,6 +296,7 @@ public actor CodexPlanOAuth {
             throw RemoteTokenClaimsError.accountMismatch
         }
         let operationID = try await beginForegroundOperation()
+        sessionWindow = window
 
         return try await withTaskCancellationHandler {
             do {
@@ -323,7 +327,7 @@ public actor CodexPlanOAuth {
                 try ensureActive(operationID)
 
                 let code = try await server.waitForAuthorizationCode()
-                try ensureActive(operationID)
+                try await waitUntilForeground(operationID)
                 await dismissSafari()
 
                 let data = try await exchangeCodeData(code, redirectURI: redirectURI,
@@ -334,7 +338,7 @@ public actor CodexPlanOAuth {
                 let tokens = try CodexRemoteStepUpToken(validating: response.accessToken,
                     accountID: accountID, accountUserID: accountUserID,
                     clientID: CodexPlanOAuthConstants.clientID)
-                try ensureActive(operationID)
+                try await waitUntilForeground(operationID)
                 await finish(operationID: operationID)
                 return tokens
             } catch {
@@ -432,7 +436,9 @@ public actor CodexPlanOAuth {
                       refreshedAccount.accountUserID == previousAccount.accountUserID else {
                     throw RemoteTokenClaimsError.accountMismatch
                 }
+                try await waitUntilForegroundIfInteractive(operationID)
                 try await tokenStore.save(tokens)
+                try await waitUntilForegroundIfInteractive(operationID)
                 await finish(operationID: operationID)
                 return tokens
             } catch {
@@ -484,18 +490,9 @@ public actor CodexPlanOAuth {
         }
 
         let operationID = beginOperationUnchecked()
-        foregroundWatchTask = Task { @MainActor [weak self] in
-            // Discard Notification before the iterator crosses actor isolation.
-            // Only the event matters, and Void is Sendable in Swift 6.
-            let backgroundEvents = NotificationCenter.default.notifications(
-                named: UIApplication.didEnterBackgroundNotification
-            ).map { _ in () }
-            for await _ in backgroundEvents {
-                guard !Task.isCancelled else { return }
-                await self?.cancel(operationID: operationID)
-                return
-            }
-        }
+        // Leaving for an MFA app is not user cancellation. iOS may suspend the
+        // loopback listener; we retain the current page/state until the fixed
+        // deadline, explicit Cancel, transport failure or process termination.
         return operationID
     }
 
@@ -514,8 +511,31 @@ public actor CodexPlanOAuth {
     }
 
     private func ensureActive(_ operationID: UUID) throws {
+        try Task.checkCancellation()
         guard activeOperationID == operationID, !cancellationRequested else {
             throw CodexPlanOAuthError.cancelled
+        }
+    }
+
+    private func waitUntilForegroundIfInteractive(_ operationID: UUID) async throws {
+        if sessionWindow != nil { try await waitUntilForeground(operationID) }
+        else { try ensureActive(operationID) }
+    }
+
+    /// No background-task entitlement or keep-alive. Polling pauses with the
+    /// process if iOS suspends it; the original wall-clock deadline still wins.
+    private func waitUntilForeground(_ operationID: UUID) async throws {
+        while true {
+            try ensureActive(operationID)
+            guard let sessionWindow else { throw CodexPlanOAuthError.cancelled }
+            do { try sessionWindow.validate() }
+            catch { throw CodexPlanOAuthError.timedOut }
+            let active = await MainActor.run { UIApplication.shared.applicationState == .active }
+            try ensureActive(operationID)
+            do { try sessionWindow.validate() }
+            catch { throw CodexPlanOAuthError.timedOut }
+            if active { return }
+            try await Task.sleep(for: .milliseconds(200))
         }
     }
 
@@ -529,8 +549,7 @@ public actor CodexPlanOAuth {
 
     private func finish(operationID: UUID) async {
         guard activeOperationID == operationID else { return }
-        foregroundWatchTask?.cancel()
-        foregroundWatchTask = nil
+        sessionWindow = nil
         networkTask?.cancel()
         networkTask = nil
         await callbackServer?.cancel()

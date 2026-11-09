@@ -16,11 +16,14 @@ def obj(key, isa, **fields):
 def rawdict(fields): return '{ ' + ' '.join(f'{k} = {v};' for k,v in fields.items()) + ' }'
 
 shared = ['Shared/Core.swift', 'Shared/Connectivity.swift', 'Shared/CompanionStore.swift', 'Shared/LiveWire.swift', 'Shared/LiveCompanionStore.swift', 'Shared/RemoteThread.swift']
-remote = ['Shared/RemoteSigning.swift', 'Shared/RemoteRelay.swift', 'Shared/RemoteAPI.swift', 'Shared/RemoteTokenClaims.swift']
+remote = ['Shared/OAuthSessionWindow.swift', 'Shared/RemoteSigning.swift', 'Shared/RemoteRelay.swift', 'Shared/RemoteAPI.swift', 'Shared/RemoteTokenClaims.swift']
 sources = {'Phone': shared + remote + ['iPhone/PhoneApp.swift', 'iPhone/PhoneRootView.swift', 'iPhone/RemoteDeviceKey.swift', 'iPhone/RemoteDiagnostics.swift', 'iPhone/CodexPlanOAuth.swift', 'iPhone/CodexPlanTokenStore.swift', 'iPhone/CodexOAuthCallbackServer.swift', 'iPhone/CodexOAuthSafariPresenter.swift', 'iPhone/RemoteConnectionJournal.swift', 'iPhone/RemoteConnectionController.swift', 'iPhone/LiveRemoteView.swift'],
            'Watch': shared + ['Watch/WatchApp.swift', 'Watch/WatchRootView.swift', 'Watch/LiveWatchView.swift']}
 for source in sorted(set(sum(sources.values(), []))):
     obj(source, 'PBXFileReference', lastKnownFileType='sourcecode.swift', path=q(source), sourceTree=q('<group>'))
+for folder in ['iPhone', 'Watch']:
+    path = folder + '/Info.plist'
+    obj(path, 'PBXFileReference', lastKnownFileType='text.plist.xml', path=q(path), sourceTree=q('<group>'))
 obj('assets','PBXFileReference',lastKnownFileType='folder.assetcatalog',path=q('Shared/Assets.xcassets'),sourceTree=q('<group>'))
 for name in ['Phone','Watch']:
     obj('product'+name,'PBXFileReference',explicitFileType='wrapper.application',includeInIndex='0',path=q('WatchCodex'+name+'.app'),sourceTree='BUILT_PRODUCTS_DIR')
@@ -35,7 +38,7 @@ for name in ['Phone','Watch']:
     for mode in ['Debug','Release']:
         settings={
             'ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME':q('AccentColor'), 'CODE_SIGN_STYLE':q('Automatic'), 'DEVELOPMENT_TEAM':q(''),
-            'PRODUCT_BUNDLE_IDENTIFIER':q('org.example.watchcodex' + ('.watchkitapp' if name=='Watch' else '')),
+            'PRODUCT_BUNDLE_IDENTIFIER':q('$(WATCH_CODEX_PHONE_BUNDLE_ID)' + ('.watchkitapp' if name=='Watch' else '')),
             'PRODUCT_NAME':q('$(TARGET_NAME)'), 'INFOPLIST_FILE':q(('Watch' if name=='Watch' else 'iPhone')+'/Info.plist'),
             'GENERATE_INFOPLIST_FILE':'NO', 'SWIFT_VERSION':'5.0', 'SWIFT_STRICT_CONCURRENCY':'minimal',
             'SWIFT_EMIT_LOC_STRINGS':'YES', 'MARKETING_VERSION':'0.1.0','CURRENT_PROJECT_VERSION':'1',
@@ -61,10 +64,10 @@ for name in ['Phone','Watch']:
     if name=='Phone': phases.append(uid('embedWatch'))
     obj('target'+name,'PBXNativeTarget',buildConfigurationList=uid('config'+name),buildPhases=array(phases),buildRules='()',dependencies=array([uid('watchDependency')] if name=='Phone' else []),name=q('WatchCodex'+name),productName=q('WatchCodex'+name),productReference=uid('product'+name),productType=q('com.apple.product-type.application'))
 obj('products','PBXGroup',children=array([uid('productPhone'),uid('productWatch')]),name='Products',sourceTree=q('<group>'))
-obj('main','PBXGroup',children=array([uid(s) for s in sorted(set(sum(sources.values(), [])))]+[uid('assets'),uid('products')]),sourceTree=q('<group>'))
+obj('main','PBXGroup',children=array([uid(s) for s in sorted(set(sum(sources.values(), [])))]+[uid('iPhone/Info.plist'),uid('Watch/Info.plist'),uid('assets'),uid('products')]),sourceTree=q('<group>'))
 projectconfigs=[]
 for mode in ['Debug','Release']:
-    projectconfigs.append(obj('project'+mode,'XCBuildConfiguration',buildSettings=rawdict({'CLANG_ENABLE_MODULES':'YES','SWIFT_VERSION':'5.0','ENABLE_STRICT_OBJC_MSGSEND':'YES','DEBUG_INFORMATION_FORMAT':q('dwarf' if mode=='Debug' else 'dwarf-with-dsym')}),name=q(mode)))
+    projectconfigs.append(obj('project'+mode,'XCBuildConfiguration',buildSettings=rawdict({'WATCH_CODEX_PHONE_BUNDLE_ID':q('org.example.watchcodex'),'CLANG_ENABLE_MODULES':'YES','SWIFT_VERSION':'5.0','ENABLE_STRICT_OBJC_MSGSEND':'YES','DEBUG_INFORMATION_FORMAT':q('dwarf' if mode=='Debug' else 'dwarf-with-dsym')}),name=q(mode)))
 obj('projectconfig','XCConfigurationList',buildConfigurations=array(projectconfigs),defaultConfigurationIsVisible='0',defaultConfigurationName='Release')
 obj('project','PBXProject',attributes=rawdict({'BuildIndependentTargetsInParallel':'YES','LastSwiftUpdateCheck':'1600','LastUpgradeCheck':'1600'}),buildConfigurationList=uid('projectconfig'),compatibilityVersion=q('Xcode 14.0'),developmentRegion='zh-Hans',hasScannedForEncodings='0',knownRegions=array([q('zh-Hans'),'en','Base']),mainGroup=uid('main'),productRefGroup=uid('products'),projectDirPath=q(''),projectRoot=q(''),targets=array([uid('targetPhone'),uid('targetWatch')]))
 lines=['// !$*UTF8*$!','{','archiveVersion = 1;','classes = {};','objectVersion = 56;','objects = {']
@@ -73,7 +76,7 @@ lines += ['};',f'rootObject = {uid("project")};','}']
 (ROOT/'WatchCodex.xcodeproj/project.pbxproj').write_text('\n'.join(lines)+'\n')
 base={'CFBundleDevelopmentRegion':'zh-Hans','CFBundleDisplayName':'Codex Remote','CFBundleExecutable':'$(EXECUTABLE_NAME)','CFBundleIdentifier':'$(PRODUCT_BUNDLE_IDENTIFIER)','CFBundleInfoDictionaryVersion':'6.0','CFBundleName':'$(PRODUCT_NAME)','CFBundlePackageType':'APPL','CFBundleShortVersionString':'$(MARKETING_VERSION)','CFBundleVersion':'$(CURRENT_PROJECT_VERSION)'}
 phone={**base,'CodexOAuthEnabled':True,'CodexOAuthClientID':'app_EMoamEEZ73f0CkXaXp7hrann','CodexOAuthScope':'openid profile email offline_access api.connectors.read api.connectors.invoke','NSFaceIDUsageDescription':'通过系统身份验证使用本机 Codex Remote 控制器密钥。','LSRequiresIPhoneOS':True,'UIApplicationSceneManifest':{'UIApplicationSupportsMultipleScenes':False},'UILaunchScreen':{},'UISupportedInterfaceOrientations':['UIInterfaceOrientationPortrait','UIInterfaceOrientationLandscapeLeft','UIInterfaceOrientationLandscapeRight']}
-watch={**base,'WKApplication':True,'WKCompanionAppBundleIdentifier':'org.example.watchcodex','WKRunsIndependentlyOfCompanionApp':False}
+watch={**base,'WKApplication':True,'WKCompanionAppBundleIdentifier':'$(WATCH_CODEX_PHONE_BUNDLE_ID)','WKRunsIndependentlyOfCompanionApp':False}
 for folder, value in [('iPhone',phone),('Watch',watch)]:
     (ROOT/folder/'Info.plist').write_bytes(plistlib.dumps(value,sort_keys=False))
 for name in ['Phone','Watch']:

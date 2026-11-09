@@ -11,7 +11,7 @@ struct WatchCodexPhoneApp: App {
                 PhoneRootView().environmentObject(store).tabItem { Label("演示", systemImage: "play.rectangle") }
             }.tint(.accentColor)
                 .onChange(of: scenePhase) { _, phase in
-                    if phase == .background { store.live.controller.disconnect() }
+                    if phase == .background { store.live.controller.applicationDidEnterBackground() }
                 }
         }
     }
