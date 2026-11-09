@@ -1,12 +1,8 @@
 # watch-codex-remote
 
-**Current follow-up requires its own Apple validation:** foreground/system-auth recovery and host-read diagnostics are being validated separately. Published `b18b88d` passed 72 Swift tests and both simulator builds; that result does not cover this working copy. See [diagnosis and acceptance](watch-codex-companion/Docs/HOST_READ_DIAGNOSTICS.md).
+**Code `5530409` passed [cloud validation](https://github.com/10yihang/watch-codex-remote/actions/runs/42674539496): 80 Swift tests, both unsigned simulator builds and non-default Phone/Watch/companion bundle-ID checks.** Five actual unconnected setup screenshots were captured and reviewed. This does not verify real-device MFA, Face ID, host/session reading or connected-session UI.
 
-Native SwiftUI iPhone + Apple Watch companion with an **experimental real Remote connection path** and a separate demo.
-
-**Code commit `eac3ae0` passed [cloud validation](https://github.com/10yihang/watch-codex-remote/actions/runs/42661689146): 70 Swift tests, both unsigned iPhone/Watch simulator builds and setup-screen capture. Real-device login, enrollment, pairing and control remain unverified.** No successful real account connection is claimed.
-
-The published MFA/bundle fixes in `b18b88d` passed [their own cloud run](https://github.com/10yihang/watch-codex-remote/actions/runs/42668949970). The host-read recovery and redesigned screens require separate Apple validation; permission to publish/build is not evidence that validation succeeded.
+A small follow-up improves dark prominent-button and Watch navigation contrast found in those screenshots. It needs its own build and screenshot check; earlier images are not proof of the corrected colors.
 
 The real tab now calls native browser OAuth → separate Remote step-up → Secure Enclave enrollment → explicit Mac pairing/selection → relay → existing-thread read/send/stop. It does not import desktop credentials or require an extra host bridge. Credentials stay on iPhone; Watch sends bounded, destination-bound commands through WatchConnectivity.
 
@@ -22,7 +18,7 @@ node --test watch-codex-probe/probe.test.mjs
 bash watch-codex-companion/Scripts/verify_apple.sh
 ```
 
-Passed for code commit `eac3ae0`: 26 source/project checks (including 12 OAuth structural checks), 20 offline Node protocol tests, all 70 Swift tests with zero failures, both unsigned simulator builds and five unconnected setup screenshots. The [verified run](https://github.com/10yihang/watch-codex-remote/actions/runs/42661689146) used Xcode 16.4 and Swift 6.1.2. The build does not exercise live OAuth, Keychain/Secure Enclave hardware or physical WatchConnectivity.
+Passed for `5530409`: 28 source/project checks (including nested OAuth, bundle and UI guardrails), 20 offline Node protocol tests, 80 Swift tests with zero failures and both unsigned simulator builds. The [run](https://github.com/10yihang/watch-codex-remote/actions/runs/42674539496) used Xcode 16.4 and Swift 6.1.2. See [host-read diagnosis and acceptance](watch-codex-companion/Docs/HOST_READ_DIAGNOSTICS.md) and [UI scope](watch-codex-companion/Docs/UI_REDESIGN.md).
 
 See [real connection implementation and device acceptance](watch-codex-companion/Docs/LIVE_CONNECTION.md).
 

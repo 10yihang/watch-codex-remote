@@ -64,6 +64,8 @@ struct LiveWatchView: View {
             .background { RemoteWatchBackdrop() }
             .navigationTitle("Remote")
         }
+        .tint(watchAccent).accentColor(watchAccent)
+        .preferredColorScheme(.dark)
     }
 }
 
@@ -110,6 +112,7 @@ private struct LiveWatchThreadView: View {
                 }.padding(.horizontal, 4)
                 Button { prepare(.sendText) } label: {
                     Label("检查并发送", systemImage: "arrow.up")
+                        .foregroundStyle(Color.black)
                         .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .buttonStyle(.borderedProminent).tint(watchAccent)

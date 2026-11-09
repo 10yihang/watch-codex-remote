@@ -27,10 +27,14 @@ Local source checks passed:
 - `Scripts/check_source.py`: 28 checks in the combined candidate (including nested UI checks).
 - `Scripts/check_native_auth.py`: 12 checks.
 - `Scripts/check_bundle_configuration.py`: 5 checks.
-- `Scripts/check_live_ui.py`: 9 UI source invariants.
+- `Scripts/check_live_ui.py`: 11 UI source invariants.
 - `node --test ../watch-codex-probe/probe.test.mjs`: 20 offline protocol tests.
 
 These checks do not compile Swift or render UI. The local Apple verification command stops before building because Xcode and Swift are unavailable. The combined patch is now approved for publication and a cloud build. Its new simulator evidence must come from that exact commit; no physical-device tests, login, pairing or remote command have been performed. Previously captured screens are the old interface and do not validate this redesign.
+
+## Published build and screenshot review
+
+Code `5530409` passed [cloud run 42674539496](https://github.com/10yihang/watch-codex-remote/actions/runs/42674539496): 80 Swift tests, both unsigned simulator builds and processed bundle-ID checks. Actual iPhone light/dark/accessibility-large and 49 mm/42 mm Watch setup PNGs were inspected. They show only unconnected setup, not connected threads or device authentication. Review found low contrast on dark iPhone prominent labels and the Watch navigation title; the follow-up changes only these colors and requires its own refreshed screenshots.
 
 ## Next Apple verification
 

@@ -120,6 +120,7 @@ struct LiveRemoteView: View {
             }
             Button { confirmation = .signIn } label: {
                 Label("登录 Codex 账号", systemImage: "person.crop.circle")
+                    .foregroundStyle(Color(uiColor: .systemBackground))
                     .frame(maxWidth: .infinity, minHeight: 24)
             }
             .buttonStyle(.borderedProminent).controlSize(.large)
@@ -133,6 +134,7 @@ struct LiveRemoteView: View {
             if controller.signedIn {
                 Button { confirmation = .enroll } label: {
                     Label("注册此 iPhone 控制器", systemImage: "iphone.gen3.radiowaves.left.and.right")
+                        .foregroundStyle(Color(uiColor: .systemBackground))
                         .frame(maxWidth: .infinity, minHeight: 24)
                 }
                 .buttonStyle(.borderedProminent).controlSize(.large)
@@ -357,6 +359,7 @@ private struct PhoneLiveThreadView: View {
                         .foregroundStyle(text.count > 2000 ? Color.red : Color.secondary)
                     Button { prepare(.sendText) } label: {
                         Label("检查并发送", systemImage: "arrow.up")
+                            .foregroundStyle(Color(uiColor: .systemBackground))
                             .frame(maxWidth: .infinity, minHeight: 24)
                     }
                     .buttonStyle(.borderedProminent).controlSize(.large)

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """UI source invariants only, not Swift compilation, rendering or device tests."""
 from pathlib import Path
+import json
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -24,6 +25,32 @@ class LiveUISourceChecks(unittest.TestCase):
         self.assertIn('.fill(.ultraThinMaterial)', self.watch)
         self.assertIn('Color(uiColor: .secondarySystemGroupedBackground)', self.phone)
         self.assertIn('Color(white: 0.12)', self.watch)
+
+    def test_prominent_controls_have_explicit_contrasting_foregrounds(self):
+        for title, symbol in [('登录 Codex 账号', 'person.crop.circle'),
+                              ('注册此 iPhone 控制器', 'iphone.gen3.radiowaves.left.and.right'),
+                              ('检查并发送', 'arrow.up')]:
+            label = self.phone.split(f'Label("{title}", systemImage: "{symbol}")', 1)[1].split('}', 1)[0]
+            self.assertIn('.foregroundStyle(Color(uiColor: .systemBackground))', label)
+        watch_label = self.watch.split('Label("检查并发送", systemImage: "arrow.up")', 1)[1].split('}', 1)[0]
+        self.assertIn('.foregroundStyle(Color.black)', watch_label)
+        self.assertIn('.tint(watchAccent).accentColor(watchAccent)', self.watch)
+        self.assertIn('.preferredColorScheme(.dark)', self.watch)
+
+    def test_primary_palette_contrast_tokens(self):
+        # Mathematical token check, not rendered-button or disabled-state verification.
+        asset = json.loads((ROOT / 'Shared/Assets.xcassets/AccentColor.colorset/Contents.json').read_text())
+        def luminance(values):
+            linear = [v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4 for v in values]
+            return sum(v * weight for v, weight in zip(linear, [0.2126, 0.7152, 0.0722]))
+        for item in asset['colors']:
+            components = item['color']['components']
+            background = luminance([float(components[key]) for key in ['red', 'green', 'blue']])
+            dark = any(appearance['value'] == 'dark' for appearance in item.get('appearances', []))
+            foreground = 0.0 if dark else 1.0
+            ratio = (max(background, foreground) + 0.05) / (min(background, foreground) + 0.05)
+            self.assertGreaterEqual(ratio, 4.5)
+        self.assertGreaterEqual((luminance([0.424, 0.894, 0.933]) + 0.05) / 0.05, 4.5)
 
     def test_layout_does_not_start_or_repeat_operations(self):
         for source in [self.phone, self.watch]:
