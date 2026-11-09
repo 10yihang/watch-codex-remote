@@ -1,4 +1,8 @@
-> Historical report. This local candidate now wires the experimental real flow and supersedes the disabled/read-only claims below. See [LIVE_CONNECTION.md](LIVE_CONNECTION.md) for current scope and unrun Apple/device checks. No prior CI result validates this revision.
+## Current real-path cloud verification
+
+Code `eac3ae078314628154787fc7a8a6dcbb405a02b6` passed [run 42661689146](https://github.com/10yihang/watch-codex-remote/actions/runs/42661689146) on 2026-11-09: 26 source checks, 20 Node tests, 70 Swift tests with zero failures, both unsigned simulator builds, and five setup screenshots. Xcode 16.4 / Swift 6.1.2. No live account login, enrollment, pairing or device control test was run. The reports below are historical.
+
+> Historical report. This local candidate now wires the experimental real flow and supersedes the disabled/read-only claims below. See [LIVE_CONNECTION.md](LIVE_CONNECTION.md) for current scope and the verified cloud build for `eac3ae0`. Real-device behavior remains unverified.
 
 # 验证报告
 

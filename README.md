@@ -2,7 +2,7 @@
 
 Native SwiftUI iPhone + Apple Watch companion with an **experimental real Remote connection path** and a separate demo.
 
-**This local candidate is not yet compiled or tested on an Apple device. No successful real account connection is claimed.** The old `f7de911` build/CI result does not validate these changes.
+**Code commit `eac3ae0` passed [cloud validation](https://github.com/10yihang/watch-codex-remote/actions/runs/42661689146): 70 Swift tests, both unsigned iPhone/Watch simulator builds and setup-screen capture. Real-device login, enrollment, pairing and control remain unverified.** No successful real account connection is claimed.
 
 The real tab now calls native browser OAuth → separate Remote step-up → Secure Enclave enrollment → explicit Mac pairing/selection → relay → existing-thread read/send/stop. It does not import desktop credentials or require an extra host bridge. Credentials stay on iPhone; Watch sends bounded, destination-bound commands through WatchConnectivity.
 
@@ -18,7 +18,7 @@ node --test watch-codex-probe/probe.test.mjs
 bash watch-codex-companion/Scripts/verify_apple.sh
 ```
 
-Passed locally: 26 source/project checks (including 12 OAuth structural checks) and 20 offline Node protocol tests. There are 70 Swift XCTest methods in the candidate; **none were executed for this revision**, and neither simulator target was built. Full Xcode and Swift are absent from the local Linux environment.
+Passed for code commit `eac3ae0`: 26 source/project checks (including 12 OAuth structural checks), 20 offline Node protocol tests, all 70 Swift tests with zero failures, both unsigned simulator builds and five unconnected setup screenshots. The [verified run](https://github.com/10yihang/watch-codex-remote/actions/runs/42661689146) used Xcode 16.4 and Swift 6.1.2. The build does not exercise live OAuth, Keychain/Secure Enclave hardware or physical WatchConnectivity.
 
 See [real connection implementation and device acceptance](watch-codex-companion/Docs/LIVE_CONNECTION.md).
 

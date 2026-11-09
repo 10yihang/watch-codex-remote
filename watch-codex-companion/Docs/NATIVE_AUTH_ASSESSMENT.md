@@ -1,4 +1,4 @@
-> Historical report. This local candidate now wires the experimental real flow and supersedes the disabled/read-only claims below. See [LIVE_CONNECTION.md](LIVE_CONNECTION.md) for current scope and unrun Apple/device checks. No prior CI result validates this revision.
+> Historical report. This local candidate now wires the experimental real flow and supersedes the disabled/read-only claims below. See [LIVE_CONNECTION.md](LIVE_CONNECTION.md) for current scope and the verified cloud build for `eac3ae0`. Real-device behavior remains unverified.
 
 # Native iPhone authentication assessment and local candidate
 

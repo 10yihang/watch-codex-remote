@@ -1,6 +1,6 @@
 # Experimental real connection candidate
 
-Prepared from public main `f7de9114fbfa6f64c768464988d507de8bb40e93`. Local work only: no publication, CI dispatch, login, credential creation, enrollment or production Remote request occurred during implementation.
+Prepared from public main `f7de9114fbfa6f64c768464988d507de8bb40e93`. With owner approval, code commit `eac3ae078314628154787fc7a8a6dcbb405a02b6` was published and [cloud run 42661689146](https://github.com/10yihang/watch-codex-remote/actions/runs/42661689146) passed on 2026-11-09. No live login, credential creation, enrollment or production Remote request was performed.
 
 ## What is now wired
 
@@ -28,7 +28,7 @@ App backgrounding/cancellation serializes teardown before allowing another opera
 
 This is an unofficial integration, not OpenAI approval. The pinned NightBlood source reports a working iPhone route, but that report is not validation of this app, its signing team or current service behavior. Public client ID availability is not a guarantee of accepted scope/redirect/enrollment/relay access. Token payload checks are routing/consistency checks, not cryptographic JWT verification; the HTTPS service remains authoritative.
 
-- Full Xcode, Apple SDK compilation and physical hardware behavior are unverified for this revision.
+- Both simulator targets compile with Xcode 16.4. Physical hardware and live service behavior remain unverified.
 - Secure Enclave enrollment requires a physical compatible iPhone. There is no software-key simulator fallback.
 - Maximum 20 recent threads. No pagination UI yet. Explicitly refresh for progress; app-server push notifications are not projected into UI.
 - The phone/Watch projection clips displayed text to keep messages bounded. It does not change thread/turn IDs or execution state.
@@ -41,13 +41,13 @@ This is an unofficial integration, not OpenAI approval. The pinned NightBlood so
 - 26 Python source/project guardrails passed, including deterministic project generation, isolated live/demo protocols and device-key call-site checks.
 - 12 nested native OAuth source guardrails passed.
 - 20 existing Node offline protocol tests passed.
-- Added unit tests for native claims, real thread parsing/RPC shapes, live wire boundaries, enrollment aliases and finish-response shape. Total: 70 Swift test methods, **not run for this revision**.
+- Added unit tests for native claims, real thread parsing/RPC shapes, live wire boundaries, enrollment aliases and finish-response shape. All 70 Swift tests passed in cloud validation with zero failures.
 - Static code review found and fixed account commit order, refresh recovery, failed-connect socket cleanup, stale review evidence and asynchronous teardown races.
-- `verify_apple.sh` was invoked and exited with the explicit Full Xcode/Swift blocker. No Apple build or Swift test started. Historical passing CI is not reused as evidence for this candidate.
+- Initial local `verify_apple.sh` correctly stopped because Linux lacked Xcode/Swift. The later [cloud run](https://github.com/10yihang/watch-codex-remote/actions/runs/42661689146) ran that script successfully: 70 Swift tests and both unsigned simulator builds. Five setup screenshots were captured; iPhone and small Watch pixels were inspected. This was not interactive authentication or physical-device QA. The only compiler-adjacent warning was skipped AppIntents metadata because the project has no AppIntents dependency.
 
 ## Next acceptance gates
 
-1. Owner-approved publication/build or build this local candidate on a Mac. Run all 70 Swift tests and both unsigned simulator targets on the exact final source. Fix compilation/test failures before any real login.
+1. **Completed:** owner-approved publication and cloud build for `eac3ae0`. All 70 Swift tests and both unsigned simulator targets passed. Documentation-only follow-ups do not change that tested application code.
 2. Retain existing local bundle/signing settings. Verify phone bundle ID matches Watch's `WKCompanionAppBundleIdentifier`, both targets use the same development team, and installation succeeds. Do not regenerate over custom signing settings blindly.
 3. On an unlocked physical iPhone, confirm the experimental sign-in prompt. Verify cancel/back/background return cleanly, account continuity, Keychain restore and explicit refresh. Do not copy tokens or send credentials/screenshots containing them.
 4. Explicitly enroll this phone. Verify system user-presence prompting, the exact returned account/client, revocation and interrupted/unknown recovery without replay.
