@@ -371,9 +371,12 @@ public actor CodexPlanOAuth {
 
         let operationID = beginOperationUnchecked()
         foregroundWatchTask = Task { @MainActor [weak self] in
-            for await _ in NotificationCenter.default.notifications(
+            // Discard Notification before the iterator crosses actor isolation.
+            // Only the event matters, and Void is Sendable in Swift 6.
+            let backgroundEvents = NotificationCenter.default.notifications(
                 named: UIApplication.didEnterBackgroundNotification
-            ) {
+            ).map { _ in () }
+            for await _ in backgroundEvents {
                 guard !Task.isCancelled else { return }
                 await self?.cancel(operationID: operationID)
                 return

@@ -68,7 +68,7 @@ Added to the **iPhone target only**, adapted from the four MIT upstream files:
 Other changes:
 
 - `Scripts/generate_project.py`, generated `.pbxproj` and `iPhone/Info.plist`: include the four sources on iPhone only; `CodexOAuthEnabled=false`, client ID empty, scope empty.
-- `Scripts/check_native_auth.py`: 11 structural checks for disabled configuration, no caller, no borrowed desktop identity, phone-only membership, callback/transport boundaries, storage and license retention.
+- `Scripts/check_native_auth.py`: 12 structural checks for disabled configuration, no caller, no borrowed desktop identity, phone-only membership, callback/transport boundaries, storage and license retention.
 - `Scripts/check_source.py`: includes the new guardrails and the expected additional iPhone build sources. The old blanket ban on the literal `refresh_token` is narrowed to the new native auth implementation; no token import or live caller was introduced.
 - `ThirdParty/NightBloodRemote/LICENSE` and `NOTICE.md`: preserved verbatim.
 - This document and a short root README note.
@@ -77,12 +77,23 @@ Deliberate changes from the source: no compiled public Codex client ID, no CLI-f
 
 The UI and demo engine are unchanged. Merely launching the app cannot start OAuth, open its callback listener, write tokens or enroll a device. The implementation still needs a reviewed integration/controller layer and runtime tests. Configuration flags are not proof of consent or service support.
 
-## Verification on this candidate
+## Cloud verification after publication
+
+With owner approval, native OAuth code commit `fa96253133a17fc27d32cb9949c2d64e6fdd8646` was published and [run 42632249643](https://github.com/10yihang/watch-codex-remote/actions/runs/42632249643) completed successfully on 2026-11-09:
+
+- 24 source/project tests, including the native-auth guardrail wrapper; 20 Node protocol tests.
+- 49 Swift core tests: 18 core, 9 API, 11 relay and 11 signing tests, all with zero failures.
+- Xcode 16.4 (16F6), Swift 6.1.2 compiler; iPhone and Watch unsigned simulator builds succeeded.
+- Actual demo simulator screenshot capture and both artifact uploads succeeded. Screenshot capture is not interactive OAuth or physical-device validation.
+
+The build reported a Notification sendability warning in the new OAuth foreground watcher. A follow-up maps notifications to `Void` before actor-isolated iteration; this does not enable login or change its cancellation purpose. Check the exact follow-up commit's CI result as well. The project remains in Swift 5 language mode; this is not a claim of a full Swift 6 migration.
+
+## Initial local verification
 
 Passed locally:
 
 - 24 source/project structural tests, including the new auth check wrapper.
-- 11 native-auth structural tests.
+- 12 native-auth structural tests.
 - 20 existing offline Node protocol tests.
 - Deterministic project regeneration is covered by the source tests.
 
@@ -93,11 +104,11 @@ Blocked before execution:
 Not run:
 
 - Safari callback runtime or cancellation, real token exchange, Keychain operations, biometric/Secure Enclave operations, device enrolment, pairing, relay, live host/thread reads, physical WatchConnectivity, install/signing or account operations.
-- No push, pull request, release or workflow dispatch was performed.
+- Initial local preparation performed no push, pull request, release or workflow dispatch. Publication and cloud CI happened later with owner approval, as recorded above.
 
 A second static review identified a potentially hanging UIKit presentation wait and an encoded-Keychain-size edge case; both were corrected before packaging. Those corrections still require iOS runtime testing.
 
-Source-string checks cannot establish runtime security, compilation or interoperability. The Swift package tests still cover the existing shared core, not these UIKit/Network/Security auth files. An iPhone test target with injected transport/callback/Keychain fakes is needed before enabling this code.
+Source-string checks alone cannot establish runtime security, compilation or interoperability. The subsequent cloud build establishes compilation for its exact commit, not live interoperability. The Swift package tests still cover the existing shared core, not these UIKit/Network/Security auth files. An iPhone test target with injected transport/callback/Keychain fakes is needed before enabling this code.
 
 ## Physical-device validation sequence
 

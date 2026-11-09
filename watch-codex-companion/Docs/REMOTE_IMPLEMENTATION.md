@@ -1,5 +1,12 @@
 # Native Remote connection work
 
+## 2026-11-09 cloud validation update
+
+Native connection and dormant OAuth code at `fa96253133a17fc27d32cb9949c2d64e6fdd8646` passed [run 42632249643](https://github.com/10yihang/watch-codex-remote/actions/runs/42632249643): 24 project/source checks, 20 Node protocol tests, 49 Swift core tests, both unsigned simulator builds and demo screenshot capture. Xcode 16.4 / Swift 6.1.2 were used. OAuth is still disabled; no real login, Keychain operation, device enrolment, pairing, live host command or physical-device test was performed. The core tests do not exercise the OAuth runtime. A follow-up resolves a Notification sendability warning; check the exact current commit's CI as well.
+
+The original preparation report below is historical. Its earlier “not run” Apple-build statements were superseded by the cloud evidence above, not by the local source checks.
+
+
 Prepared 2026-11-05 from main `70b91065aede43e0de70f9d645d536f6dbe2cf70`.
 
 ## What changed

@@ -12,7 +12,7 @@
 - `WatchCodexWatch`：watchOS 10+ 的现代单 Target Watch App，无旧式 extension target。
 - `Package.swift`：演示核心及原生 Remote 协议测试，可在 Apple Swift 工具链运行 `swift test`。
 
-推荐使用安装了 iOS/watchOS Simulator SDK 的 Xcode 16 或更新版本。旧演示版曾通过云端 Swift/Xcode 检查：[历史记录](https://github.com/10yihang/watch-codex-remote/actions/runs/41960076332)。**本次新连接代码尚未进行 Swift 编译、Xcode 构建、原生运行或真实 Remote 验证。** 旧提交的通过记录不能代替本次验证。
+推荐使用安装了 iOS/watchOS Simulator SDK 的 Xcode 16 或更新版本。旧演示版曾通过云端 Swift/Xcode 检查：[历史记录](https://github.com/10yihang/watch-codex-remote/actions/runs/41960076332)。**原生连接与登录准备代码 `fa96253` 已通过 [2026-11-09 云端检查](https://github.com/10yihang/watch-codex-remote/actions/runs/42632249643)：49 个 Swift 核心测试、iPhone/Watch 无签名模拟器构建及演示截图步骤。** 登录、Keychain、Secure Enclave 和真实 Remote 尚未验证；这些核心测试不覆盖 OAuth 运行流程。后续改动应以对应提交的检查结果为准。
 
 一次运行所有 Apple 构建前检查：
 
@@ -37,7 +37,7 @@ bash Scripts/verify_apple.sh
 
 尚未实现获准的 iOS 账号登录流程、真实会话 UI/Watch 接入或真实指令发送。HTTP/WebSocket、设备密钥和 enroll/pair 已写入原生代码，但从未用于真实账号或主机。没有桌面 token 导入、desktop client 冒用、自动密钥创建、自动注册、Mac 访问、新 thread/fork 或权限覆盖。
 
-`Shared/Core.swift` 仍然只定义 **Watch ↔ iPhone 演示协议**，不混用真实 relay。`RemoteSigning.swift` 与 `RemoteRelay.swift` 独立实现原生协议层；Node golden tests 通过不代表这些 Swift 代码已经编译或 iOS 已获授权。
+`Shared/Core.swift` 仍然只定义 **Watch ↔ iPhone 演示协议**，不混用真实 relay。`RemoteSigning.swift` 与 `RemoteRelay.swift` 独立实现原生协议层；Swift 编译和离线测试通过不代表 iOS 已获 Remote 授权。
 
 ## 文件
 
@@ -47,7 +47,7 @@ bash Scripts/verify_apple.sh
 - `iPhone/`、`Watch/`：SwiftUI App 与界面，现代 watchOS 生命周期处理。
 - `Shared/RemoteAPI.swift`、`RemoteRelay.swift`、`RemoteSigning.swift`：原生 HTTP、只读 WebSocket 和签名组件。
 - `iPhone/RemoteDeviceKey.swift`：需明确调用的 Secure Enclave/Keychain 设备密钥提供器。
-- `Tests/CompanionCoreTests/`：原有演示测试及新增原生协议测试；本次最终版本尚未执行 Swift 测试。
+- `Tests/CompanionCoreTests/`：原有演示测试及新增原生协议测试；基线 `fa96253` 的 49 个 Swift 核心测试已在云端通过，OAuth 运行流程未测试。
 - `Scripts/check_source.py`：可在 Linux 执行的结构检查，不是 Swift 编译器。
 - `Scripts/generate_project.py`：无外部依赖的确定性工程生成器；日常直接打开已生成工程即可。修改过 bundle ID/签名后不要直接重跑生成器，否则会回到模板默认值。
 - `Docs/TEST_REPORT.md`、`Docs/DEVICE_CHECKLIST.md`：已做检查与待做验收分开记录。

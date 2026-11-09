@@ -55,6 +55,9 @@ class NativeAuthSourceChecks(unittest.TestCase):
                      'await callbackServer?.cancel()', 'await dismissSafari()',
                      'try ensureActive(operationID)', 'withTaskCancellationHandler']:
             self.assertIn(text, self.oauth)
+    def test_background_event_discards_notification_before_iteration(self):
+        self.assertIn(').map { _ in () }', self.oauth)
+        self.assertIn('for await _ in backgroundEvents', self.oauth)
     def test_safari_does_not_wait_on_animation_completion(self):
         source = self.auth['CodexOAuthSafariPresenter.swift']
         for text in ['presenter.presentedViewController == nil', '!presenter.isBeingPresented',
