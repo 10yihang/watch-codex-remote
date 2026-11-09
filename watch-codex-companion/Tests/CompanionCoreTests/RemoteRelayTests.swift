@@ -158,4 +158,24 @@ final class RemoteRelayTests: XCTestCase {
         catch { XCTAssertEqual(error as? RemoteRelayError, .notInitialized) }
         await relay.disconnect()
     }
+    func testReadFailuresPreserveSafeCauseAndMutationsRemainUnknown() {
+        let cases: [(Error, RemoteRelayError)] = [
+            (CancellationError(), .cancelled), (URLError(.cancelled), .cancelled),
+            (URLError(.timedOut), .timedOut), (URLError(.networkConnectionLost), .transportFailed),
+            (RemoteRelayError.chunksUnsupported, .chunksUnsupported),
+            (RemoteRelayError.frameTooLarge, .frameTooLarge),
+            (RemoteRelayError.sequenceGap, .sequenceGap),
+            (RemoteRelayError.disconnected, .disconnected)
+        ]
+        for (error, expected) in cases {
+            for method in ["initialize", "thread/list", "thread/read"] {
+                XCTAssertEqual(RemoteRelay.failureAfterDispatch(error, method: method, requestID: 7), expected)
+            }
+            let mutatingMethods: [String?] = ["thread/resume", "turn/start", "turn/interrupt", "future/method", nil]
+            for method in mutatingMethods {
+                XCTAssertEqual(RemoteRelay.failureAfterDispatch(error, method: method, requestID: 7), .outcomeUnknown(requestID: 7))
+            }
+        }
+    }
+
 }

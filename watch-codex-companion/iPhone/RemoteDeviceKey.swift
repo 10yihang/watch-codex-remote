@@ -73,6 +73,22 @@ enum RemoteDeviceKey {
         catch { throw Failure.cryptography }
     }
 
+    // CryptoKit user-presence signing may wait for a system authentication UI.
+    // Do not block MainActor while iOS is settling that UI. Cancellation does not
+    // authorize reuse: callers recheck foreground and challenge expiry afterward.
+    static func signAsync(record: RemoteEnrollmentRecord, payload: Data) async throws -> Data {
+        try Task.checkCancellation()
+        let task = Task.detached(priority: .userInitiated) {
+            try Task.checkCancellation()
+            return try sign(record: record, payload: payload)
+        }
+        return try await withTaskCancellationHandler {
+            let signature = try await task.value
+            try Task.checkCancellation()
+            return signature
+        } onCancel: { task.cancel() }
+    }
+
     // Deletes only this app's wrapped key record. Does not revoke any server enrollment.
     static func remove(keyId: String) throws {
         let status = SecItemDelete(try query(keyId: keyId) as CFDictionary)

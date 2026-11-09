@@ -27,6 +27,7 @@ final class RemoteConnectionController: ObservableObject {
     private var operationID: UUID?
     private var presenter: CodexOAuthSafariViewControllerPresenter?
     private var interactiveAuthorization = false
+    private var operationStage = "准备操作"
     private var reviewedMutationID: UUID?
     private var reviewedBinding: LiveBinding?
     private var reviewedAt: Date?
@@ -42,7 +43,7 @@ final class RemoteConnectionController: ObservableObject {
                 try await self.oauth.signIn(expectedAccountID: existing?.accountID,
                     expectedAccountUserID: existing?.record.accountUserId, presentSafari: try self.presentation())
             }
-            try self.checkForeground()
+            try await self.awaitForeground()
             try self.accept(tokens, matching: existing)
             if let existing {
                 guard existing.accountID == self.claims?.accountID,
@@ -77,7 +78,7 @@ final class RemoteConnectionController: ObservableObject {
             let api = try self.api()
             guard let claims = self.claims else { throw RemoteConnectionError.signInRequired }
             let start = try await api.startEnrollment()
-            try self.checkForeground()
+            try await self.awaitForeground()
             let identity = try RemoteDeviceKey.create()
             let record = RemoteEnrollmentRecord(accountUserId: start.accountUserID, algorithm: identity.algorithm,
                 clientId: start.clientID, keyId: identity.keyId, protectionClass: identity.protectionClass,
@@ -95,10 +96,11 @@ final class RemoteConnectionController: ObservableObject {
                 try await self.oauth.stepUp(accountID: claims.accountID, accountUserID: claims.accountUserID,
                     presentSafari: try self.presentation())
             }
-            try self.checkForeground()
+            try await self.awaitForeground()
             try stepUp.validate()
-            let proof = try self.proof(record: record, challenge: start.challenge, payload: payload)
+            let proof = try await self.proof(record: record, challenge: start.challenge, payload: payload)
             // Persist unknown BEFORE dispatch. Process death cannot authorize a retry.
+            try stepUp.validate()
             saved.phase = .enrollmentUnknown; try saved.save(); self.setJournal(saved)
             _ = try await api.finishEnrollment(record: record, stepUpToken: stepUp.rawValue, proof: proof)
             saved.phase = .enrolled; try saved.save(); self.setJournal(saved)
@@ -133,30 +135,39 @@ final class RemoteConnectionController: ObservableObject {
             await self.relay.disconnect(); self.clearReview(); self.markDisconnected()
             var saved = try self.usableJournal(allowPairingUnknown: true)
             let api = try self.api()
+            self.setStage("验证主机在线状态")
             let freshHosts = try await api.hosts(clientID: saved.record.clientId)
             guard let host = freshHosts.first(where: { $0.id == hostID }), host.online else { throw RemoteConnectionError.hostUnavailable }
             self.hosts = freshHosts
             self.clearReview()
             saved.environmentID = hostID; saved.phase = .paired
             try saved.save(); self.setJournal(saved)
+            self.setStage("获取控制器签名挑战")
             let challenge = try await api.startRefresh(record: saved.record)
             let payload = try RemoteSigning.enrollmentPayload(record: saved.record, challenge: challenge.challenge,
                 refresh: true, nowEpoch: Self.now)
-            let proof = try self.proof(record: saved.record, challenge: challenge.challenge, payload: payload)
+            self.setStage("等待系统验证控制器密钥")
+            let proof = try await self.proof(record: saved.record, challenge: challenge.challenge, payload: payload)
+            self.setStage("验证控制器会话凭据")
             let session = try await api.finishRefresh(record: saved.record, proof: proof)
             guard let account = self.account else { throw RemoteConnectionError.signInRequired }
-            try self.checkForeground()
+            try await self.awaitForeground()
             let record = saved.record
             await self.relay.disconnect()
             self.markDisconnected()
             do {
+            self.setStage("建立 Remote 通道并初始化主机")
             try await self.relay.connect(accessToken: account.accessToken, accountID: account.accountID,
                 record: record, session: session, environmentID: hostID) { payload in
-                    try RemoteDeviceKey.sign(record: record, payload: payload)
+                    try await self.awaitForeground()
+                    let signature = try await RemoteDeviceKey.signAsync(record: record, payload: payload)
+                    try await self.awaitForeground()
+                    return signature
                 }
             // A socket handshake alone never produces a Connected snapshot.
+            self.setStage("读取主机真实会话列表")
             let page = try RemoteThread.decodePage(await self.relay.listThreads())
-            try self.checkForeground()
+            try await self.awaitForeground()
             let binding = LiveBinding(accountID: account.accountID, controllerID: record.clientId,
                 environmentID: hostID, sessionID: UUID().uuidString)
             self.publish(LiveSnapshot(binding: binding, hostName: host.title, threads: page.threads, connected: true))
@@ -249,10 +260,10 @@ final class RemoteConnectionController: ObservableObject {
 
     func handle(command: LiveCommand) async -> LiveReply {
         guard !busy else { return reply(command, .rejected, "已有请求正在处理，未发送。") }
-        busy = true; handlingID = command.id
+        busy = true; handlingID = command.id; operationStage = command.kind == .refresh ? "读取会话列表" : command.kind == .read ? "读取会话详情" : "执行已确认指令"
         defer { handlingID = nil; if teardown == nil { busy = false } }
         do {
-            try command.validate(); try checkForeground()
+            try await awaitForeground(); try command.validate()
             guard snapshot.connected, command.binding == snapshot.binding else { throw RemoteConnectionError.stale }
             if command.isMutation && !snapshot.fresh { throw RemoteConnectionError.stale }
             if command.isMutation {
@@ -264,7 +275,7 @@ final class RemoteConnectionController: ObservableObject {
             switch command.kind {
             case .refresh:
                 let page = try RemoteThread.decodePage(await relay.listThreads())
-                try checkForeground()
+                try await awaitForeground()
                 updateThreads(page.threads)
                 status = "已刷新真实会话。列表未必含完整运行详情；打开会话可读取当前 turn。"
             case .read:
@@ -280,7 +291,7 @@ final class RemoteConnectionController: ObservableObject {
             return reply(command, .succeeded, status)
         } catch {
             let uncertain = journal?.pendingMutation?.id == command.id
-            status = uncertain ? "指令结果未确认。不会重发；重新连接并读取原会话后核对。" : Self.safeMessage(error)
+            status = uncertain ? "指令结果未确认。不会重发；重新连接并读取原会话后核对。" : operationStage + "：" + Self.safeMessage(error)
             if error is RemoteRelayError { await relay.disconnect(); markDisconnected() }
             return reply(command, uncertain ? .unknown : .rejected, status)
         }
@@ -295,15 +306,19 @@ final class RemoteConnectionController: ObservableObject {
         } else {
             guard current.state == .running, current.currentTurnID == command.turnID else { throw RemoteConnectionError.stale }
         }
+        try await awaitForeground()
+        try command.validate()
         guard snapshot.fresh, command.binding == snapshot.binding, var saved = journal else { throw RemoteConnectionError.stale }
         saved.pendingMutation = .init(id: command.id, threadID: threadID, environmentID: command.binding.environmentID, turnID: command.turnID, kind: command.kind)
         saved.recentRequestIDs.append(command.id)
         saved.recentRequestIDs = Array(saved.recentRequestIDs.suffix(100))
         try saved.save(); setJournal(saved)
-        try checkForeground()
+        try await awaitForeground()
+        try command.validate()
         if command.kind == .sendText {
             _ = try await relay.resumeThread(id: threadID)
-            try checkForeground()
+            try await awaitForeground()
+            try command.validate()
             _ = try RemoteThread.decodeStartedTurn(await relay.startTurn(threadID: threadID, text: command.text!))
             status = "主机已确认新 turn。任务尚未完成，请刷新查看。"
         } else {
@@ -328,12 +343,12 @@ final class RemoteConnectionController: ObservableObject {
     }
     private func run(_ message: String, body: @escaping @MainActor () async throws -> Void) {
         guard !busy else { return }
-        busy = true; status = message
+        busy = true; status = message; operationStage = message
         let id = UUID(); operationID = id
         operation = Task {
             defer { if operationID == id { busy = false; operation = nil; operationID = nil; presenter = nil } }
-            do { try checkForeground(); try await body() }
-            catch { if operationID == id { status = Self.safeMessage(error) } }
+            do { try await awaitForeground(); try await body() }
+            catch { if operationID == id { status = operationStage + "：" + Self.safeMessage(error) } }
         }
     }
     private func api() throws -> RemoteAPI {
@@ -368,15 +383,18 @@ final class RemoteConnectionController: ObservableObject {
         canRevoke = true; needsReview = value.pendingMutation != nil
         reviewThreadID = value.pendingMutation?.threadID; reviewHostID = value.pendingMutation?.environmentID
     }
-    private func proof(record: RemoteEnrollmentRecord, challenge: RemoteEnrollmentChallenge, payload: Data) throws -> RemoteDeviceKeyProof {
+    private func proof(record: RemoteEnrollmentRecord, challenge: RemoteEnrollmentChallenge, payload: Data) async throws -> RemoteDeviceKeyProof {
+        try await awaitForeground()
         guard challenge.challengeExpiresAt > Self.now else { throw RemoteSigningError.expiredChallenge }
-        let signature = try RemoteDeviceKey.sign(record: record, payload: payload)
+        let signature = try await RemoteDeviceKey.signAsync(record: record, payload: payload)
+        try await awaitForeground()
+        guard challenge.challengeExpiresAt > Self.now else { throw RemoteSigningError.expiredChallenge }
         return RemoteDeviceKeyProof(algorithm: record.algorithm, challengeToken: challenge.challengeToken,
             keyId: record.keyId, signatureDerBase64: signature.base64EncodedString(), signedPayloadBase64: payload.base64EncodedString())
     }
     private func readActual(_ id: String) async throws -> RemoteThread {
         let value = try RemoteThread.decodeRead(await relay.readThread(id: id), expectedThreadID: id)
-        try checkForeground()
+        try await awaitForeground()
         return value
     }
     private func replace(_ thread: RemoteThread) {
@@ -419,8 +437,40 @@ final class RemoteConnectionController: ObservableObject {
     private func checkForeground() throws {
         try Task.checkCancellation()
         guard teardown == nil else { throw CancellationError() }
-        guard UIApplication.shared.applicationState == .active else { throw RemoteConnectionError.foreground }
+        switch activityDecision(elapsed: RemoteActivityGate.settlingLimit) {
+        case .proceed: return
+        case .background: throw RemoteConnectionError.foreground
+        case .protectedDataUnavailable: throw RemoteConnectionError.protectedDataUnavailable
+        case .wait, .inactiveTimedOut: throw RemoteConnectionError.inactive
+        }
     }
+    private func activityDecision(elapsed: Duration) -> RemoteActivityGate.Decision {
+        let state: RemoteActivityGate.State
+        switch UIApplication.shared.applicationState {
+        case .active: state = .active
+        case .inactive: state = .inactive
+        case .background: state = .background
+        @unknown default: state = .inactive
+        }
+        return RemoteActivityGate.decision(state: state,
+            protectedDataAvailable: UIApplication.shared.isProtectedDataAvailable, elapsed: elapsed)
+    }
+    private func awaitForeground() async throws {
+        let clock = ContinuousClock()
+        let started = clock.now
+        while true {
+            try Task.checkCancellation()
+            guard teardown == nil else { throw CancellationError() }
+            switch activityDecision(elapsed: started.duration(to: clock.now)) {
+            case .proceed: return
+            case .background: throw RemoteConnectionError.foreground
+            case .protectedDataUnavailable: throw RemoteConnectionError.protectedDataUnavailable
+            case .inactiveTimedOut: throw RemoteConnectionError.inactive
+            case .wait: try await Task.sleep(for: .milliseconds(100))
+            }
+        }
+    }
+    private func setStage(_ value: String) { operationStage = value; status = value + "…" }
     private func presentation() throws -> CodexOAuthSafariPresentation {
         guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first(where: { $0.activationState == .foregroundActive }),
               let root = scene.windows.first(where: { $0.isKeyWindow })?.rootViewController else { throw CodexPlanOAuthError.browserPresenterUnavailable }
@@ -458,8 +508,37 @@ final class RemoteConnectionController: ObservableObject {
             }
         }
         if error is CancellationError { return "操作已取消；已发送操作的结果仍需核对。" }
-        if error is RemoteDeviceKey.Failure { return "无法使用此 iPhone 的 Secure Enclave 密钥。请使用已解锁的真机并允许系统身份验证。" }
-        if error is RemoteRelayError { return "Remote 通信失败。请核对桌面版本与权限；不会自动重发。" }
+        if let key = error as? RemoteDeviceKey.Failure {
+            switch key {
+            case .unavailable: return "当前设备不支持此 Secure Enclave 密钥操作。"
+            case .missingKey: return "未找到原控制器的设备密钥。请核对原 Bundle Identifier 和签名配置，不要重复注册。"
+            case .invalidStoredKey, .invalidIdentity: return "原控制器密钥与本机记录无法匹配，本次未继续。"
+            default: return "系统身份验证或安全密钥签名未完成，本次操作未继续。"
+            }
+        }
+        if let signing = error as? RemoteSigningError {
+            switch signing {
+            case .expiredChallenge: return "设备验证期间签名挑战已过期，请重新明确发起连接。"
+            case .invalidSession: return "控制器会话凭据的格式、范围或有效期未通过验证。"
+            default: return "控制器签名挑战或身份绑定未通过验证，本次未继续。"
+            }
+        }
+        if let relay = error as? RemoteRelayError {
+            switch relay {
+            case .timedOut: return "主机通信超时。没有自动重发，请检查桌面 Remote 是否可用后重新连接。"
+            case .cancelled: return "主机通信已取消，没有自动重发。"
+            case .transportFailed, .disconnected: return "主机网络通道中断，尚未取得有效响应。"
+            case .frameTooLarge: return "主机响应超过本版本 150 KiB 上限，不能读取此结果。"
+            case .chunksUnsupported: return "主机返回分块响应，本版本尚不支持合并读取。"
+            case .malformedFrame: return "主机响应不符合本版本支持的格式。"
+            case .sequenceGap, .wrongDestination: return "主机响应的顺序或目标校验失败，连接已停止。"
+            case .notInitialized: return "主机通道尚未完成初始化，请先连接主机。"
+            case .remoteFailure: return "主机明确拒绝了请求，请在桌面核对 Remote 状态和权限。"
+            case .outcomeUnknown: return "已发送请求的结果未确认；请核对原会话，不要重复发送。"
+            case .busy: return "主机通道已有请求正在处理。"
+            case .invalidInput, .unsupportedMethod, .staleSelection: return "请求参数或会话选择未通过校验，本次未继续。"
+            }
+        }
         return "响应无法验证或操作未完成。不会自动重试，请核对连接状态。"
     }
 }

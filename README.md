@@ -1,10 +1,12 @@
 # watch-codex-remote
 
+**Current follow-up requires its own Apple validation:** foreground/system-auth recovery and host-read diagnostics are being validated separately. Published `b18b88d` passed 72 Swift tests and both simulator builds; that result does not cover this working copy. See [diagnosis and acceptance](watch-codex-companion/Docs/HOST_READ_DIAGNOSTICS.md).
+
 Native SwiftUI iPhone + Apple Watch companion with an **experimental real Remote connection path** and a separate demo.
 
 **Code commit `eac3ae0` passed [cloud validation](https://github.com/10yihang/watch-codex-remote/actions/runs/42661689146): 70 Swift tests, both unsigned iPhone/Watch simulator builds and setup-screen capture. Real-device login, enrollment, pairing and control remain unverified.** No successful real account connection is claimed.
 
-**MFA/bundle follow-up, separate validation required:** MFA app switching no longer deliberately cancels the login page. A single Xcode project setting now links the iPhone, Watch and companion identifiers. See [fix details and remaining acceptance](watch-codex-companion/Docs/MFA_RECOVERY.md). The earlier cloud result above does not cover these changes.
+The published MFA/bundle fixes in `b18b88d` passed [their own cloud run](https://github.com/10yihang/watch-codex-remote/actions/runs/42668949970). The host-read recovery and redesigned screens require separate Apple validation; permission to publish/build is not evidence that validation succeeded.
 
 The real tab now calls native browser OAuth → separate Remote step-up → Secure Enclave enrollment → explicit Mac pairing/selection → relay → existing-thread read/send/stop. It does not import desktop credentials or require an extra host bridge. Credentials stay on iPhone; Watch sends bounded, destination-bound commands through WatchConnectivity.
 

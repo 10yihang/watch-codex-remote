@@ -1,228 +1,405 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-05T04:42:16Z",
-  "title": "Watch Codex companion: frosted sessions proposal",
+  "generatedAt": "2026-11-09T00:00:00Z",
+  "title": "Watch Codex companion: native frosted sessions",
   "extensions": {
     "native": {
       "platforms": [
         "iOS 17+",
         "watchOS 10+"
       ],
-      "implementation": "SwiftUI; semantic Dynamic Type styles, SF Symbols and native navigation. Values below are observed implementation literals; watchAccent is an explicit shared Watch constant.",
-      "sources": [
-        "DESIGN.md",
-        "Watch/WatchRootView.swift",
-        "iPhone/PhoneRootView.swift",
-        "Watch/WatchApp.swift",
-        "Shared/Assets.xcassets/AccentColor.colorset/Contents.json"
-      ],
-      "units": "points; typography uses semantic styles rather than fixed sizes",
-      "colors": {
-        "accent": {
-          "asset": "AccentColor",
-          "colorSpace": "sRGB",
-          "light": [
-            0,
-            0.353,
-            0.459,
-            1
-          ],
-          "dark": [
-            0.424,
-            0.894,
-            0.933,
-            1
-          ],
-          "lightIncreasedContrast": [
-            0,
-            0.255,
-            0.337,
-            1
-          ],
-          "darkIncreasedContrast": [
-            0.6,
-            0.961,
-            0.984,
-            1
-          ],
-          "usage": "Adaptive asset retained on iPhone; Watch uses explicit watchAccent instead."
-        },
-        "watchCanvas": "LinearGradient: black, watchAccent.opacity(0.16), black; topLeading to bottomTrailing; ignoresSafeArea",
-        "watchActiveSurface": "Material.ultraThinMaterial",
-        "watchRecentSurface": "Material.ultraThinMaterial",
-        "phoneCanvas": "UIColor.systemGroupedBackground",
-        "text": [
-          "primary",
-          "secondary",
-          "tertiary"
+      "toolchain": "Xcode 16.4",
+      "compatibility": "iOS 27 is a visual reference only. Native SwiftUI materials; no glassEffect or SDK upgrade.",
+      "documentationScope": "Source-extracted native values. No invented CSS aliases, fixed font sizes, HTML/CSS material approximations, or rendered previews.",
+      "liveSurfaces": {
+        "sources": [
+          "iPhone/LiveRemoteView.swift",
+          "Watch/LiveWatchView.swift"
         ],
-        "error": "Color.red; destructive controls use the native destructive role",
-        "watchAccent": {
-          "source": "Watch/WatchRootView.swift: watchAccent",
-          "sRGB": [
-            0.424,
-            0.894,
-            0.933,
-            1
+        "units": "SwiftUI points; semantic Dynamic Type text styles, not CSS pixels or fixed font metrics",
+        "colors": {
+          "phoneAccent": "Color.accentColor (shared adaptive AccentColor asset)",
+          "watchAccent": "watchAccent (shared explicit sRGB constant; see demoSurfaces.colors.watchAccent)",
+          "text": [
+            "Color.primary",
+            "Color.secondary"
           ],
-          "application": "Direct running-status references and WatchApp .tint(watchAccent).accentColor(watchAccent), with forced dark colorScheme; also used at 16% opacity in the backdrop gradient."
+          "warning": "Color.orange",
+          "error": "Color.red",
+          "running": "Color.accentColor on iPhone; watchAccent on Watch",
+          "otherStates": "Color.secondary except failed (red) and interrupted (orange)"
         },
-        "phoneActiveSurface": "Material.ultraThinMaterial",
-        "phoneConnectionSurface": "Material.thinMaterial",
-        "phoneSecondaryCopy": "Color.primary.opacity(0.65); tertiary chevrons and existing semantic detail-state/count styles unchanged"
-      },
-      "typography": {
-        "family": "system; no custom fonts or fixed line heights",
-        "watchActiveTitle": "headline",
-        "watchRecentTitle": "subheadline.weight(.medium)",
-        "watchActiveStatus": "caption2.weight(.medium)",
-        "watchMetadata": "caption2",
-        "phoneActiveTitle": "title2.weight(.bold)",
-        "phoneRecentTitle": "headline",
-        "phoneSectionTitle": "title3.weight(.semibold)",
-        "phoneActiveStatusAndAction": "subheadline.weight(.semibold)",
-        "phoneSummaryAndRecentMetadata": "subheadline",
-        "phoneReceiptAndConnectionMetadata": "caption",
-        "phoneSnapshotTime": "caption2",
-        "detailSummary": "body",
-        "phoneIdentifiers": "caption.monospaced()"
-      },
-      "spacing": {
-        "watch": {
-          "outerHorizontal": 10,
-          "outerBottom": 8,
-          "rowGap": 10,
-          "rowPadding": 12,
-          "rowContentGap": 7,
-          "titleAndMetadataGap": 5,
-          "disclosureHorizontalInset": 4,
-          "utilityGap": 8,
-          "utilityMinHeight": 44
+        "typography": {
+          "phoneOverviewTitle": "title2.weight(.bold)",
+          "phoneSectionTitle": "title3.weight(.semibold)",
+          "phoneSessionTitle": "headline",
+          "phoneSessionState": "subheadline.weight(.semibold)",
+          "phoneConnectionStep": "subheadline.weight(.medium)",
+          "phoneSummary": "subheadline",
+          "phoneIdentifiers": "caption.monospaced()",
+          "phoneCount": "subheadline.monospacedDigit(); composer count caption.monospacedDigit()",
+          "watchSessionTitle": "headline",
+          "watchRowState": "caption2.weight(.medium)",
+          "watchDetailState": "caption.weight(.semibold)",
+          "watchDetailSummary": "body",
+          "watchEmptyCopy": "caption",
+          "watchMetadata": "caption2",
+          "watchComposerCount": "caption2.monospacedDigit()"
         },
-        "phone": {
-          "outerHorizontal": 24,
-          "outerTop": 8,
-          "outerBottom": 28,
-          "sectionGap": 24,
-          "activePadding": 22,
-          "activeContentGap": 16,
-          "activeActionTop": 4,
-          "recentRowVertical": 15,
-          "recentRowGap": 14,
-          "recentTextGap": 5,
-          "recentDividerLeading": 36,
-          "connectionPadding": 16,
-          "connectionContentGap": 12,
-          "connectionTextGap": 4,
-          "receiptStackGap": 14,
-          "activeAccessibilityHeaderGap": 8
-        }
-      },
-      "shapes": {
-        "cornerStyle": "continuous RoundedRectangle",
-        "watchSessionRadius": 18,
-        "phoneActiveRadius": 24,
-        "phoneConnectionRadius": 16
-      },
-      "depth": "Native translucent materials, blurred color backdrops and half-point white edge highlights; no custom shadows.",
-      "motion": "Native system behavior; no custom animation tokens.",
-      "layout": "Content-sized vertical scroll views; no fixed breakpoint system. Watch uses snapshot order; iPhone groups running sessions first. PhoneActiveSession uses AnyLayout with leading VStackLayout(spacing: 8) at accessibility Dynamic Type sizes, HStackLayout and Spacer(minLength: 8) otherwise.",
-      "documentationScope": "Current local glass-proposal SwiftUI sources only; unpublished, not simulator-verified. No HTML/CSS approximations or fixed font metrics.",
-      "verification": "Local proposal only; no simulator verification or final visual, accessibility or contrast QA pass claimed. Fresh builds, protocol tests and rendered-device inspection remain required.",
-      "materials": {
-        "watchSession": "ultraThinMaterial",
-        "phoneActive": "ultraThinMaterial",
-        "phoneConnection": "thinMaterial"
-      },
-      "edges": {
-        "width": 0.5,
-        "color": "white",
-        "watchOpacity": 0.14,
-        "phoneActiveOpacity": 0.3,
-        "phoneConnectionOpacity": 0.22
-      },
-      "phoneBackdrop": {
-        "base": "UIColor.systemGroupedBackground",
-        "accentEllipse": {
-          "color": "Color.accentColor",
-          "opacity": 0.22,
-          "relativeWidth": 1.2,
-          "relativeHeight": 0.6,
-          "blur": 55,
-          "relativeOffsetX": -0.35,
-          "relativeOffsetY": -0.25
+        "surfaces": {
+          "phone": {
+            "fill": "Material.regularMaterial",
+            "reduceTransparencyFill": "Color(uiColor: .secondarySystemGroupedBackground)",
+            "cornerRadius": 24,
+            "cornerStyle": "continuous",
+            "padding": 20,
+            "edge": "Color.primary",
+            "edgeOpacity": 0.07,
+            "increasedContrastEdgeOpacity": 0.24,
+            "edgeWidth": 0.5
+          },
+          "watch": {
+            "fill": "Material.ultraThinMaterial",
+            "reduceTransparencyFill": "Color(white: 0.12)",
+            "cornerRadius": 20,
+            "cornerStyle": "continuous",
+            "padding": 14,
+            "edge": "Color.white",
+            "edgeOpacity": 0.14,
+            "increasedContrastEdgeOpacity": 0.4,
+            "edgeWidth": 0.5
+          }
         },
-        "blueEllipse": {
-          "color": "Color.blue",
-          "opacity": 0.12,
-          "relativeWidth": 1,
-          "relativeHeight": 0.5,
-          "blur": 65,
-          "relativeOffsetX": 0.35,
-          "relativeOffsetY": 0.2
+        "backdrops": {
+          "phone": {
+            "base": "Color(uiColor: .systemGroupedBackground)",
+            "overlay": "LinearGradient(colors: [Color.accentColor.opacity(0.14), .clear, Color.accentColor.opacity(0.05)], startPoint: .topLeading, endPoint: .bottomTrailing)"
+          },
+          "watch": {
+            "base": "Color.black",
+            "overlay": "LinearGradient(colors: [watchAccent.opacity(0.13), .clear], startPoint: .topLeading, endPoint: .bottomTrailing)"
+          },
+          "behavior": "Omit gradient with accessibilityReduceTransparency; ignoresSafeArea; accessibilityHidden(true)"
         },
-        "ignoresSafeArea": true,
-        "accessibilityHidden": true
+        "spacing": {
+          "phoneRoot": {
+            "horizontal": 20,
+            "top": 8,
+            "bottom": 32,
+            "sectionGap": 28
+          },
+          "phoneDetail": {
+            "horizontal": 20,
+            "top": 12,
+            "bottom": 32
+          },
+          "phoneOverview": {
+            "contentGap": 20,
+            "headingGap": 14,
+            "headingTextGap": 6,
+            "statusGap": 12,
+            "stepGap": 12,
+            "busyGap": 10,
+            "iconSize": 48,
+            "iconBackgroundOpacity": 0.09
+          },
+          "phoneSessions": {
+            "rowGap": 14,
+            "rowContentGap": 12,
+            "summaryLineLimit": 3,
+            "projectLineLimit": 2
+          },
+          "phoneHostRow": {
+            "verticalPadding": 16,
+            "contentGap": 12,
+            "textGap": 6,
+            "iconWidth": 28,
+            "refreshMinSize": 44
+          },
+          "phoneSetup": {
+            "accountGap": 14,
+            "hostGap": 16,
+            "settingsGap": 24,
+            "settingsTop": 20
+          },
+          "watch": {
+            "horizontal": 10,
+            "bottom": 16,
+            "sectionGap": 16,
+            "rowContentGap": 8,
+            "utilityHorizontal": 4,
+            "detailContentGap": 10,
+            "composerGap": 12,
+            "actionLabelMinHeight": 44,
+            "titleLineLimit": 3,
+            "projectLineLimit": 1
+          }
+        },
+        "layout": "Content-sized ScrollView and NavigationStack. iPhone setup steps use HStackLayout(spacing: 12), switching to leading VStackLayout(spacing: 12) at accessibility Dynamic Type sizes. Connected iPhone shows sessions above collapsed connection settings; recovery panel can precede sessions. Watch preserves snapshot thread order. No fixed breakpoints.",
+        "controls": "Native bordered / borderedProminent buttons; iPhone controlSize(.large), selected action label minHeight 24 (not a total hit-target claim); Watch action labels minHeight 44. Native SecureField with roundedBorder for pairing. Native multiline iPhone TextField lineLimit 3...8; Watch system TextField. Native confirmation alerts; destructive role for stop and final execution.",
+        "state": "Account completion from controller.signedIn, controller completion from controller.enrolled, host completion from snapshot.connected. Show receipt/status and busy cancellation from actual model state. No staged progress or demo data. Real-operation uncertainty remains visible; mutation availability remains controlled by model gates.",
+        "depth": "Native materials and half-point outlines only; no custom shadows or backdrop blur ellipses.",
+        "motion": "No custom visual animation; existing 350 ms post-confirmation sign-in dispatch delay is behavior, not a design motion token.",
+        "accessibility": "Semantic typography, labeled state symbols, combined session-row children, hidden decorative artwork, Reduce Transparency solid fills, increased-contrast outlines. Implementation accommodations only, not verified accessibility compliance.",
+        "refresh": "Phone controller.refresh() controls say 刷新会话; disabled busy || !snapshot.connected; empty-state refresh shown only when connected. loadHosts() says 刷新主机列表 and remains distinct. Watch refresh adds !snapshot.connected to busy/reachability guards. Intentional enablement strengthening, not a claim that every prior rule is frozen.",
+        "disclosures": "All three phone DisclosureGroup labels use minHeight: 44 and contentShape(Rectangle())."
       },
-      "compatibility": "Native materials supported by Xcode 16.4 and project targets; materials available on iOS 15+ and watchOS 10+. No glassEffect: it requires SDK 26. The iOS 27 reference is visual direction only."
+      "demoSurfaces": {
+        "platforms": [
+          "iOS 17+",
+          "watchOS 10+"
+        ],
+        "implementation": "SwiftUI; semantic Dynamic Type styles, SF Symbols and native navigation. Values below are observed implementation literals; watchAccent is an explicit shared Watch constant.",
+        "sources": [
+          "DESIGN.md",
+          "Watch/WatchRootView.swift",
+          "iPhone/PhoneRootView.swift",
+          "Watch/WatchApp.swift",
+          "Shared/Assets.xcassets/AccentColor.colorset/Contents.json"
+        ],
+        "units": "points; typography uses semantic styles rather than fixed sizes",
+        "colors": {
+          "accent": {
+            "asset": "AccentColor",
+            "colorSpace": "sRGB",
+            "light": [
+              0,
+              0.353,
+              0.459,
+              1
+            ],
+            "dark": [
+              0.424,
+              0.894,
+              0.933,
+              1
+            ],
+            "lightIncreasedContrast": [
+              0,
+              0.255,
+              0.337,
+              1
+            ],
+            "darkIncreasedContrast": [
+              0.6,
+              0.961,
+              0.984,
+              1
+            ],
+            "usage": "Adaptive asset retained on iPhone; Watch uses explicit watchAccent instead."
+          },
+          "watchCanvas": "LinearGradient: black, watchAccent.opacity(0.16), black; topLeading to bottomTrailing; ignoresSafeArea",
+          "watchActiveSurface": "Material.ultraThinMaterial",
+          "watchRecentSurface": "Material.ultraThinMaterial",
+          "phoneCanvas": "UIColor.systemGroupedBackground",
+          "text": [
+            "primary",
+            "secondary",
+            "tertiary"
+          ],
+          "error": "Color.red; destructive controls use the native destructive role",
+          "watchAccent": {
+            "source": "Watch/WatchRootView.swift: watchAccent",
+            "sRGB": [
+              0.424,
+              0.894,
+              0.933,
+              1
+            ],
+            "application": "Direct running-status references and WatchApp .tint(watchAccent).accentColor(watchAccent), with forced dark colorScheme; also used at 16% opacity in the backdrop gradient."
+          },
+          "phoneActiveSurface": "Material.ultraThinMaterial",
+          "phoneConnectionSurface": "Material.thinMaterial",
+          "phoneSecondaryCopy": "Color.primary.opacity(0.65); tertiary chevrons and existing semantic detail-state/count styles unchanged"
+        },
+        "typography": {
+          "family": "system; no custom fonts or fixed line heights",
+          "watchActiveTitle": "headline",
+          "watchRecentTitle": "subheadline.weight(.medium)",
+          "watchActiveStatus": "caption2.weight(.medium)",
+          "watchMetadata": "caption2",
+          "phoneActiveTitle": "title2.weight(.bold)",
+          "phoneRecentTitle": "headline",
+          "phoneSectionTitle": "title3.weight(.semibold)",
+          "phoneActiveStatusAndAction": "subheadline.weight(.semibold)",
+          "phoneSummaryAndRecentMetadata": "subheadline",
+          "phoneReceiptAndConnectionMetadata": "caption",
+          "phoneSnapshotTime": "caption2",
+          "detailSummary": "body",
+          "phoneIdentifiers": "caption.monospaced()"
+        },
+        "spacing": {
+          "watch": {
+            "outerHorizontal": 10,
+            "outerBottom": 8,
+            "rowGap": 10,
+            "rowPadding": 12,
+            "rowContentGap": 7,
+            "titleAndMetadataGap": 5,
+            "disclosureHorizontalInset": 4,
+            "utilityGap": 8,
+            "utilityMinHeight": 44
+          },
+          "phone": {
+            "outerHorizontal": 24,
+            "outerTop": 8,
+            "outerBottom": 28,
+            "sectionGap": 24,
+            "activePadding": 22,
+            "activeContentGap": 16,
+            "activeActionTop": 4,
+            "recentRowVertical": 15,
+            "recentRowGap": 14,
+            "recentTextGap": 5,
+            "recentDividerLeading": 36,
+            "connectionPadding": 16,
+            "connectionContentGap": 12,
+            "connectionTextGap": 4,
+            "receiptStackGap": 14,
+            "activeAccessibilityHeaderGap": 8
+          }
+        },
+        "shapes": {
+          "cornerStyle": "continuous RoundedRectangle",
+          "watchSessionRadius": 18,
+          "phoneActiveRadius": 24,
+          "phoneConnectionRadius": 16
+        },
+        "depth": "Native translucent materials, blurred color backdrops and half-point white edge highlights; no custom shadows.",
+        "motion": "Native system behavior; no custom animation tokens.",
+        "layout": "Content-sized vertical scroll views; no fixed breakpoint system. Watch uses snapshot order; iPhone groups running sessions first. PhoneActiveSession uses AnyLayout with leading VStackLayout(spacing: 8) at accessibility Dynamic Type sizes, HStackLayout and Spacer(minLength: 8) otherwise.",
+        "documentationScope": "Current local glass-proposal SwiftUI sources only; unpublished, not simulator-verified. No HTML/CSS approximations or fixed font metrics.",
+        "verification": "Local proposal only; no simulator verification or final visual, accessibility or contrast QA pass claimed. Fresh builds, protocol tests and rendered-device inspection remain required.",
+        "materials": {
+          "watchSession": "ultraThinMaterial",
+          "phoneActive": "ultraThinMaterial",
+          "phoneConnection": "thinMaterial"
+        },
+        "edges": {
+          "width": 0.5,
+          "color": "white",
+          "watchOpacity": 0.14,
+          "phoneActiveOpacity": 0.3,
+          "phoneConnectionOpacity": 0.22
+        },
+        "phoneBackdrop": {
+          "base": "UIColor.systemGroupedBackground",
+          "accentEllipse": {
+            "color": "Color.accentColor",
+            "opacity": 0.22,
+            "relativeWidth": 1.2,
+            "relativeHeight": 0.6,
+            "blur": 55,
+            "relativeOffsetX": -0.35,
+            "relativeOffsetY": -0.25
+          },
+          "blueEllipse": {
+            "color": "Color.blue",
+            "opacity": 0.12,
+            "relativeWidth": 1,
+            "relativeHeight": 0.5,
+            "blur": 65,
+            "relativeOffsetX": 0.35,
+            "relativeOffsetY": 0.2
+          },
+          "ignoresSafeArea": true,
+          "accessibilityHidden": true
+        },
+        "compatibility": "Native materials supported by Xcode 16.4 and project targets; materials available on iOS 15+ and watchOS 10+. No glassEffect: it requires SDK 26. The iOS 27 reference is visual direction only."
+      },
+      "verification": "Source-only documentation review. Xcode and Swift unavailable here; no fresh build, simulator capture, visual/contrast/interaction verification, push, or cloud build performed. Existing demo descriptions retained separately; not new render evidence."
     }
   },
   "components": [
     {
-      "name": "Watch session row",
+      "name": "Live iPhone connection overview",
+      "kind": "card",
+      "description": "Regular-material surface groups host/setup heading, truth-derived account/controller/host steps, read status, busy cancellation and experimental disclosure."
+    },
+    {
+      "name": "Live iPhone session row",
+      "kind": "card",
+      "description": "Plain NavigationLink; state symbol and semibold status, headline title, up to three summary lines and two project lines; shared live phone surface."
+    },
+    {
+      "name": "Live Watch session row",
+      "kind": "card",
+      "description": "Plain NavigationLink; caption2 state, up to three headline title lines and one project line; shared live Watch surface."
+    },
+    {
+      "name": "Live native actions",
+      "kind": "button",
+      "description": "Native bordered / borderedProminent buttons; iPhone controlSize(.large), selected action label minHeight 24 (not a total hit-target claim); Watch action labels minHeight 44. Native SecureField with roundedBorder for pairing. Native multiline iPhone TextField lineLimit 3...8; Watch system TextField. Native confirmation alerts; destructive role for stop and final execution."
+    },
+    {
+      "name": "Live pairing and composer",
+      "kind": "input",
+      "description": "Secure pairing field; native text composers with 2000-character count, blank/oversized and model-based mutation gates, confirmation alert and retained unsent draft."
+    },
+    {
+      "name": "Live native navigation",
+      "kind": "nav",
+      "description": "Codex Remote phone root, Remote Watch root; real-session detail screens. Connected phone connection settings and identifiers use DisclosureGroup."
+    },
+    {
+      "name": "Live recovery status",
+      "kind": "custom",
+      "description": "Orange symbol plus text describes uncertain real-operation outcome. Read and review actions remain explicit; neither decoration nor connectivity implies success."
+    },
+    {
+      "name": "Unchanged demo: Watch session row",
       "kind": "card",
       "description": "Plain NavigationLink. Cyan running status and headline title; quieter medium subheadline title for other sessions. All rows use ultraThinMaterial, 12-point inset, 18-point continuous corners and a 0.5-point white edge at 14% opacity. Two-line title; one-line project. Combined accessibility children with state value."
     },
     {
-      "name": "iPhone active session",
+      "name": "Unchanged demo: iPhone active session",
       "kind": "card",
       "description": "Plain NavigationLink. Title2 bold title, accent status/action, primary-at-65%-opacity project and up-to-three-line summary. UltraThinMaterial; 22-point inset; 24-point continuous corner; 0.5-point white edge at 30% opacity. Header stacks vertically with 8-point spacing at accessibility Dynamic Type sizes. Combined accessibility children."
     },
     {
-      "name": "iPhone recent session",
+      "name": "Unchanged demo: iPhone recent session",
       "kind": "custom",
       "description": "Plain NavigationLink, native status symbol, headline title, project and state in primary at 65% opacity, tertiary chevron. No card fill. 15-point vertical padding; inset dividers between rows."
     },
     {
-      "name": "Native navigation",
+      "name": "Unchanged demo: Native navigation",
       "kind": "nav",
       "description": "NavigationStack and NavigationLink; watch inline Codex title, iPhone native large root title and inline detail titles. Receipts and diagnostics remain below sessions or on connection screens."
     },
     {
-      "name": "Native actions",
+      "name": "Unchanged demo: Native actions",
       "kind": "button",
       "description": "Watch bordered refresh/source controls with minimum height 44 and explicit accessibility labels; iPhone toolbar refresh and pull-to-refresh. Refresh disables while busy. Stop uses native destructive role and confirmationDialog."
     },
     {
-      "name": "Demo instruction field",
+      "name": "Unchanged demo: Demo instruction field",
       "kind": "input",
       "description": "Native TextField in List sections; watch system keyboard/dictation, iPhone multiline range 3...8. 2000-character limit with red error/count; preserve draft. Send disabled for unavailable mutation, running thread, blank or oversized input."
     },
     {
-      "name": "iPhone Watch connection card",
+      "name": "Unchanged demo: iPhone Watch connection card",
       "kind": "card",
       "description": "Plain NavigationLink with native Watch symbol, reachability label and tertiary chevron. ThinMaterial; 16-point inset and continuous corner; 0.5-point white edge at 22% opacity. Device reachability is not Remote authorization."
     }
   ],
   "narrative": {
-    "overview": "Unpublished native frosted-glass proposal for the existing session-first Watch and iPhone demo. Translucent materials and restrained color backdrops support clear session hierarchy without implying a real Remote connection.",
+    "overview": "Native frosted-glass redesign of live iPhone and Watch surfaces. Session-first once connected, guided setup when disconnected, compact Watch hierarchy. Unchanged demo surfaces remain separate and explicitly simulated.",
     "keyCharacteristics": [
-      "Session-first hierarchy",
-      "Compact explicit demo/disconnected disclosure",
-      "Running-session emphasis and quieter recent sessions",
-      "System typography and navigation",
-      "Native frosted materials and restrained color backdrops"
+      "Truth-derived connection steps",
+      "Grouped connection/read status",
+      "Native adaptive materials and semantic type",
+      "Compact Watch sessions",
+      "Separate demo and live surfaces"
     ],
     "dos": [
-      "Keep every session and action explicitly simulated.",
-      "Keep device reachability distinct from Remote authentication.",
-      "Use semantic Dynamic Type and native controls.",
-      "Use explicit watchAccent for Watch tint and running status; preserve clear demo/disconnected disclosure and check rendered contrast over materials."
+      "Use native values from the correct surface scope.",
+      "Keep uncertainty, connection truth and experimental disclosures visible.",
+      "Verify small Watch and accessibility sizes before visual sign-off."
     ],
     "donts": [
-      "Do not claim this local proposal is shipped, simulator-verified or implemented with glassEffect.",
-      "Do not fabricate progress percentages, login state, host status, completion or live Remote connection.",
-      "Do not add a giant disconnected card ahead of the sessions."
+      "Do not claim iOS 27 APIs, glassEffect, rendered QA or a successful build.",
+      "Do not label live sessions as simulated or mix demo data into live views.",
+      "Do not infer operational readiness from styling."
     ]
   }
 }

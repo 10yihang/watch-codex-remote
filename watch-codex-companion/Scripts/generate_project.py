@@ -16,7 +16,7 @@ def obj(key, isa, **fields):
 def rawdict(fields): return '{ ' + ' '.join(f'{k} = {v};' for k,v in fields.items()) + ' }'
 
 shared = ['Shared/Core.swift', 'Shared/Connectivity.swift', 'Shared/CompanionStore.swift', 'Shared/LiveWire.swift', 'Shared/LiveCompanionStore.swift', 'Shared/RemoteThread.swift']
-remote = ['Shared/OAuthSessionWindow.swift', 'Shared/RemoteSigning.swift', 'Shared/RemoteRelay.swift', 'Shared/RemoteAPI.swift', 'Shared/RemoteTokenClaims.swift']
+remote = ['Shared/OAuthSessionWindow.swift', 'Shared/RemoteActivityGate.swift', 'Shared/RemoteSigning.swift', 'Shared/RemoteRelay.swift', 'Shared/RemoteAPI.swift', 'Shared/RemoteTokenClaims.swift']
 sources = {'Phone': shared + remote + ['iPhone/PhoneApp.swift', 'iPhone/PhoneRootView.swift', 'iPhone/RemoteDeviceKey.swift', 'iPhone/RemoteDiagnostics.swift', 'iPhone/CodexPlanOAuth.swift', 'iPhone/CodexPlanTokenStore.swift', 'iPhone/CodexOAuthCallbackServer.swift', 'iPhone/CodexOAuthSafariPresenter.swift', 'iPhone/RemoteConnectionJournal.swift', 'iPhone/RemoteConnectionController.swift', 'iPhone/LiveRemoteView.swift'],
            'Watch': shared + ['Watch/WatchApp.swift', 'Watch/WatchRootView.swift', 'Watch/LiveWatchView.swift']}
 for source in sorted(set(sum(sources.values(), []))):

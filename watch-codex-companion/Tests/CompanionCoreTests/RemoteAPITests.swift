@@ -71,7 +71,7 @@ final class RemoteAPITests: XCTestCase {
     }
 
     func testHostMissingOrInvalidStateFailsClosed() {
-        for json in [#"{"env_id":"env-id","online":true}"#, #"{"env_id":"env-id","online":"true","busy":false}"#, #"{"online":true,"busy":false}"#] {
+        for json in [#"{"env_id":"../other","online":true}"#, #"{"env_id":"env-id","online":"true","busy":false}"#, #"{"online":true,"busy":false}"#] {
             XCTAssertThrowsError(try JSONDecoder().decode(RemoteHost.self, from: Data(json.utf8)))
         }
     }
@@ -116,6 +116,33 @@ final class RemoteAPITests: XCTestCase {
         XCTAssertNoThrow(try RemoteAPI.validateEnrollmentStart(start, authorization: alias, refresh: false, nowEpoch: now))
         let unrelated = RemoteAccountAuthorization(accessToken: "synthetic-token", accountID: "workspace-id", accountUserID: "different-primary", tokenUserID: "unrelated")
         XCTAssertThrowsError(try RemoteAPI.validateEnrollmentStart(start, authorization: unrelated, refresh: false, nowEpoch: now))
+    }
+
+    func testHostOptionalStateDefaultsClosed() throws {
+        for json in [#"{"env_id":"env-id"}"#, #"{"env_id":"env-id","online":null,"busy":null}"#] {
+            let host = try JSONDecoder().decode(RemoteHost.self, from: Data(json.utf8))
+            XCTAssertFalse(host.online)
+            XCTAssertFalse(host.busy)
+        }
+        let host = try JSONDecoder().decode(RemoteHost.self, from: Data(#"{"env_id":"env-id","online":true}"#.utf8))
+        XCTAssertTrue(host.online)
+        XCTAssertFalse(host.busy)
+    }
+
+    func testReadTransportFailuresHaveSafeCategoriesWithoutMutationReplay() {
+        let cases: [(Error, RemoteAPIError)] = [
+            (CancellationError(), .cancelled), (URLError(.cancelled), .cancelled),
+            (URLError(.timedOut), .timedOut), (URLError(.notConnectedToInternet), .transportFailed),
+            (RemoteAPIError.httpStatus(403), .httpStatus(403))
+        ]
+        for (error, expected) in cases {
+            XCTAssertEqual(RemoteAPI.failureAfterDispatch(error, method: "GET"), expected)
+        }
+        for error in [URLError(.timedOut), URLError(.cancelled), URLError(.networkConnectionLost)] {
+            for method in ["POST", "DELETE"] {
+                XCTAssertEqual(RemoteAPI.failureAfterDispatch(error, method: method), .outcomeUnknown)
+            }
+        }
     }
 
 }

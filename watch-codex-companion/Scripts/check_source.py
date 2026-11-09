@@ -33,7 +33,7 @@ class SourceChecks(unittest.TestCase):
         for source in re.findall(r'path = "([^"]+\.swift)";', self.project):
             self.assertTrue((ROOT/source).is_file(), source)
         self.assertEqual(self.project.count('isa = PBXSourcesBuildPhase;'), 2)
-        self.assertEqual(self.project.count('isa = PBXBuildFile;'), 34)  # 31 source + 2 assets + 1 embed
+        self.assertEqual(self.project.count('isa = PBXBuildFile;'), 35)  # 32 source + 2 assets + 1 embed
     def test_companion_bundle_identifiers_match(self):
         subprocess.run([sys.executable, str(ROOT/'Scripts/check_bundle_configuration.py')], check=True, capture_output=True)
     def test_embed_phase_and_dependency_exist(self):
@@ -92,6 +92,8 @@ class SourceChecks(unittest.TestCase):
         self.assertNotIn('UserDefaults', journal)
     def test_native_auth_guardrails(self):
         subprocess.run([sys.executable, str(ROOT/'Scripts/check_native_auth.py')], check=True, capture_output=True)
+    def test_live_ui_guardrails(self):
+        subprocess.run([sys.executable, str(ROOT/'Scripts/check_live_ui.py')], check=True, capture_output=True)
     def test_device_key_guardrails(self):
         subprocess.run([sys.executable, str(ROOT/'Scripts/check_device_key.py')], check=True, capture_output=True)
     def test_new_native_remote_tests_are_in_swift_package(self):
@@ -173,6 +175,26 @@ class SourceChecks(unittest.TestCase):
             dark=any(a['value']=='dark' for a in item.get('appearances',[]))
             ratio=(lum+0.05)/0.05 if dark else 1.05/(lum+0.05)
             self.assertGreaterEqual(ratio,4.5)
+    def test_temporary_inactive_wait_never_allows_background_work(self):
+        controller = (ROOT/'iPhone/RemoteConnectionController.swift').read_text()
+        key = (ROOT/'iPhone/RemoteDeviceKey.swift').read_text()
+        gate = (ROOT/'Shared/RemoteActivityGate.swift').read_text()
+        errors = (ROOT/'iPhone/RemoteConnectionJournal.swift').read_text()
+        self.assertIn('if state == .background { return .background }', gate)
+        self.assertIn('guard protectedDataAvailable else', gate)
+        self.assertIn('UIApplication.shared.isProtectedDataAvailable', controller)
+        self.assertIn('case .wait: try await Task.sleep(for: .milliseconds(100))', controller)
+        self.assertIn('try await awaitForeground(); try command.validate()', controller)
+        self.assertGreaterEqual(controller.count('try command.validate()'), 4)
+        self.assertIn('let signature = try await RemoteDeviceKey.signAsync(record: record, payload: payload)\n                    try await self.awaitForeground()', controller)
+        self.assertIn('Task.detached(priority: .userInitiated)', key)
+        self.assertIn('onCancel: { task.cancel() }', key)
+        self.assertNotIn('try RemoteDeviceKey.sign(', controller)
+        self.assertNotIn('请保持 iPhone App 在前台并解锁后操作', errors)
+        self.assertIn('case .chunksUnsupported:', controller)
+        self.assertIn('case .frameTooLarge:', controller)
+        self.assertIn('operationStage + "：" + Self.safeMessage(error)', controller)
+
     def test_generator_is_deterministic(self):
         # Never regenerate in the original checkout: it may contain local signing IDs.
         files = ['WatchCodex.xcodeproj/project.pbxproj', 'iPhone/Info.plist', 'Watch/Info.plist',

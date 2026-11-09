@@ -70,7 +70,7 @@ class NativeAuthSourceChecks(unittest.TestCase):
         self.assertEqual(controller.count('try await self.withInteractiveAuthorization {'), 2)
         self.assertIn('defer { interactiveAuthorization = false }', controller)
         self.assertIn('func cancel() { disconnect() }', controller)
-        self.assertIn('try self.checkForeground()\n            try stepUp.validate()', controller)
+        self.assertIn('try await self.awaitForeground()\n            try stepUp.validate()', controller)
         self.assertNotIn('beginBackgroundTask', self.oauth + controller)
         self.assertNotIn('ASWebAuthenticationSession', self.oauth)
     def test_safari_does_not_wait_on_animation_completion(self):

@@ -24,9 +24,13 @@ enum RemoteAPIError: Error, LocalizedError, Equatable {
     case invalidInput, invalidResponse, responseTooLarge, accountMismatch
     case httpStatus(Int)
     case outcomeUnknown
+    case timedOut, cancelled, transportFailed
 
     var errorDescription: String? {
         switch self {
+        case .timedOut: return "读取 Remote 响应超时；未自动重试。"
+        case .cancelled: return "Remote 读取已取消。"
+        case .transportFailed: return "Remote 网络连接失败；未自动重试。"
         case .invalidInput: return "Remote 请求参数无效。"
         case .invalidResponse: return "Remote 返回了无法验证的响应。"
         case .responseTooLarge: return "Remote 响应超出本版本的大小上限。"
@@ -76,6 +80,18 @@ struct RemoteHost: Decodable, Identifiable, Sendable {
     enum CodingKeys: String, CodingKey {
         case envID = "env_id", displayName = "display_name", hostName = "host_name"
         case name, online, busy, appServerVersion = "app_server_version"
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        envID = try values.decode(String.self, forKey: .envID)
+        _ = try RemoteAPI.pathID(envID)
+        displayName = try values.decodeIfPresent(String.self, forKey: .displayName)
+        hostName = try values.decodeIfPresent(String.self, forKey: .hostName)
+        name = try values.decodeIfPresent(String.self, forKey: .name)
+        online = try values.decodeIfPresent(Bool.self, forKey: .online) ?? false
+        busy = try values.decodeIfPresent(Bool.self, forKey: .busy) ?? false
+        appServerVersion = try values.decodeIfPresent(String.self, forKey: .appServerVersion)
     }
 }
 
@@ -222,7 +238,18 @@ final class RemoteAPI {
     }
 
     static func failureAfterDispatch(_ error: Error, method: String) -> RemoteAPIError {
-        if method == "GET" { return error as? RemoteAPIError ?? .invalidResponse }
+        if method == "GET" {
+            if let error = error as? RemoteAPIError { return error }
+            if error is CancellationError { return .cancelled }
+            if let error = error as? URLError {
+                switch error.code {
+                case .cancelled: return .cancelled
+                case .timedOut: return .timedOut
+                default: return .transportFailed
+                }
+            }
+            return .invalidResponse
+        }
         // An explicit client-side rejection is different from a timeout, 5xx,
         // corrupt/oversized success response or failure to validate a new session.
         if let apiError = error as? RemoteAPIError, case .httpStatus(let status) = apiError,

@@ -7,6 +7,7 @@ import FoundationNetworking
 public enum RemoteRelayError: Error, Equatable, Sendable {
     case invalidInput, malformedFrame, frameTooLarge, chunksUnsupported
     case wrongDestination, sequenceGap, disconnected, busy, notInitialized
+    case cancelled, transportFailed
     case timedOut, outcomeUnknown(requestID: Int), remoteFailure, unsupportedMethod, staleSelection
 }
 
@@ -134,6 +135,7 @@ public actor RemoteRelay {
     private var codec: RemoteRelayCodec?
     private var pending: CheckedContinuation<Data, Error>?
     private var pendingID: Int?
+    private var pendingMethod: String?
     private var nextID = 1
     private var initialized = false
     private var connecting = false
@@ -263,14 +265,14 @@ public actor RemoteRelay {
         self.codec = codec
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
-                pending = continuation; pendingID = id
+                pending = continuation; pendingID = id; pendingMethod = method
                 timeout = Task { [weak self] in
                     do { try await Task.sleep(nanoseconds: 15_000_000_000) } catch { return }
                     await self?.expire(id)
                 }
                 Task { [weak self] in
                     do { try await socket.send(.string(String(decoding: frame, as: UTF8.self))) }
-                    catch { await self?.sendFailed(id) }
+                    catch { await self?.sendFailed(id, error: error) }
                 }
             }
         } onCancel: {
@@ -279,7 +281,7 @@ public actor RemoteRelay {
     }
 
     private func expire(_ id: Int) { if pendingID == id { fail(RemoteRelayError.timedOut) } }
-    private func sendFailed(_ id: Int) { if pendingID == id { fail(RemoteRelayError.disconnected) } }
+    private func sendFailed(_ id: Int, error: Error) { if pendingID == id { fail(error) } }
     private func cancelRequest(_ id: Int) { if pendingID == id { fail(CancellationError()) } }
 
     private func receiveLoop(_ activeSocket: URLSessionWebSocketTask) async {
@@ -291,7 +293,7 @@ public actor RemoteRelay {
                 self.codec = codec
                 if let response, let pending {
                     timeout?.cancel(); timeout = nil
-                    self.pending = nil; pendingID = nil
+                    self.pending = nil; pendingID = nil; pendingMethod = nil
                     let message = try RemoteRelayCodec.object(response)
                     if message["error"] != nil { pending.resume(throwing: RemoteRelayError.remoteFailure) }
                     else { pending.resume(returning: response) }
@@ -307,13 +309,29 @@ public actor RemoteRelay {
         session?.invalidateAndCancel(); session = nil
         reader?.cancel(); reader = nil; timeout?.cancel(); timeout = nil
         initialized = false; codec = nil; resumedThreadID = nil
-        // A socket failure or timeout cannot prove whether a dispatched request ran.
+        // A socket failure or timeout cannot prove whether a dispatched mutation ran.
         if let pending {
-            let reported: Error
-            reported = RemoteRelayError.outcomeUnknown(requestID: pendingID ?? 0)
-            pending.resume(throwing: reported)
+            pending.resume(throwing: Self.failureAfterDispatch(error, method: pendingMethod, requestID: pendingID ?? 0))
         }
-        pending = nil; pendingID = nil
+        pending = nil; pendingID = nil; pendingMethod = nil
+    }
+
+    // Only known non-mutating operations retain a safe diagnostic category.
+    // Unknown methods and every dispatched mutation remain outcome-unknown.
+    nonisolated static func failureAfterDispatch(_ error: Error, method: String?, requestID: Int) -> RemoteRelayError {
+        guard let method, ["initialize", "thread/list", "thread/read"].contains(method) else {
+            return .outcomeUnknown(requestID: requestID)
+        }
+        if let error = error as? RemoteRelayError { return error }
+        if error is CancellationError { return .cancelled }
+        if let error = error as? URLError {
+            switch error.code {
+            case .cancelled: return .cancelled
+            case .timedOut: return .timedOut
+            default: return .transportFailed
+            }
+        }
+        return .transportFailed
     }
 
     private static func data(_ message: URLSessionWebSocketTask.Message) throws -> Data {

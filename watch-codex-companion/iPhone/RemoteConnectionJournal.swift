@@ -60,7 +60,7 @@ struct RemoteConnectionJournal: Codable {
 }
 
 enum RemoteConnectionError: Error, LocalizedError {
-    case storage, signInRequired, enrollmentRequired, recoveryRequired, hostUnavailable, stale, busy, foreground, malformedResult
+    case storage, signInRequired, enrollmentRequired, recoveryRequired, hostUnavailable, stale, busy, foreground, inactive, protectedDataUnavailable, malformedResult
     var errorDescription: String? {
         switch self {
         case .storage: return "无法安全保存或读取本机连接状态；没有继续操作。"
@@ -70,7 +70,9 @@ enum RemoteConnectionError: Error, LocalizedError {
         case .hostUnavailable: return "选定主机不在最新在线列表中。"
         case .stale: return "连接或会话状态已变化，请刷新并重新确认。"
         case .busy: return "已有请求正在处理。"
-        case .foreground: return "请保持 iPhone App 在前台并解锁后操作。"
+        case .foreground: return "iOS 报告 App 已进入后台，本次操作已停止；不会自动重发。"
+        case .inactive: return "系统界面结束后 App 仍未恢复活动状态，本次操作未继续。请回到此页面后重试。"
+        case .protectedDataUnavailable: return "iOS 暂时未允许访问受保护数据，本次操作未继续。请等待系统恢复后重试。"
         case .malformedResult: return "主机返回的结果无法匹配当前会话。"
         }
     }

@@ -59,6 +59,29 @@ public struct RemoteControlSession: Codable, Sendable {
     }
 }
 
+// Preserve the existing ISO representation used by signing, accepting the
+// reference's integral epoch wire form without rounding or inventing an expiry.
+extension RemoteControlSession {
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        accountUserId = try values.decode(String.self, forKey: .accountUserId)
+        clientId = try values.decode(String.self, forKey: .clientId)
+        remoteControlToken = try values.decode(String.self, forKey: .remoteControlToken)
+        scopes = try values.decode([String].self, forKey: .scopes)
+        if let text = try? values.decode(String.self, forKey: .expiresAt) {
+            expiresAt = text // Strict ISO validation remains in validateSession.
+        } else {
+            let epoch = try values.decode(Int64.self, forKey: .expiresAt)
+            guard (0...253_402_300_799).contains(epoch) else {
+                throw RemoteSigningError.invalidSession
+            }
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime]
+            expiresAt = formatter.string(from: Date(timeIntervalSince1970: Double(epoch)))
+        }
+    }
+}
+
 public struct RemoteDeviceKeyProof: Codable, Sendable {
     public var algorithm: String
     public var challengeToken: String

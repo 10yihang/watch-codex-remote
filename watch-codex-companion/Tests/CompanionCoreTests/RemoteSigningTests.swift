@@ -169,4 +169,19 @@ final class RemoteSigningTests: XCTestCase {
         XCTAssertThrowsError(try RemoteSigning.proof(record: record, challengeToken: "token", payload: payload, privateKey: key))
     }
     #endif
+    func testSessionWireExpirationAcceptsIntegralEpochAndISO() throws {
+        for expiry in ["2000000000", "2000000000.0", #""2033-05-18T03:33:20Z""#, #""2033-05-18T03:33:20.123Z""#] {
+            let json = #"{"account_user_id":"account-user","client_id":"client-id","remote_control_token":"synthetic","scopes":["remote_control_controller_websocket"],"expires_at":"# + expiry + "}"
+            let decoded = try JSONDecoder().decode(RemoteControlSession.self, from: Data(json.utf8))
+            XCTAssertEqual(try RemoteSigning.validateSession(record: record, session: decoded, nowEpoch: 1_900_000_000), 2_000_000_000)
+        }
+    }
+
+    func testSessionWireExpirationRejectsInvalidNumericForms() {
+        for expiry in ["true", "null", "2000000000.5", "-1", "253402300800", "9223372036854775808", "1e100"] {
+            let json = #"{"account_user_id":"account-user","client_id":"client-id","remote_control_token":"synthetic","scopes":["remote_control_controller_websocket"],"expires_at":"# + expiry + "}"
+            XCTAssertThrowsError(try JSONDecoder().decode(RemoteControlSession.self, from: Data(json.utf8)))
+        }
+    }
+
 }

@@ -1,0 +1,15 @@
+Checking UI source invariants only; no Swift, simulator or device validation.
+test_confirmation_stays_before_phone_authorization (__main__.LiveUISourceChecks.test_confirmation_stays_before_phone_authorization) ... ok
+test_exact_mutation_target_and_cancel_are_preserved (__main__.LiveUISourceChecks.test_exact_mutation_target_and_cancel_are_preserved) ... ok
+test_layout_does_not_start_or_repeat_operations (__main__.LiveUISourceChecks.test_layout_does_not_start_or_repeat_operations) ... ok
+test_native_materials_accessibility_and_navigation (__main__.LiveUISourceChecks.test_native_materials_accessibility_and_navigation) ... ok
+test_phone_connection_actions_and_guards (__main__.LiveUISourceChecks.test_phone_connection_actions_and_guards) ... ok
+test_phone_mutation_guards_and_success_only_draft_clear (__main__.LiveUISourceChecks.test_phone_mutation_guards_and_success_only_draft_clear) ... ok
+test_product_truth_and_receipts_remain_visible (__main__.LiveUISourceChecks.test_product_truth_and_receipts_remain_visible) ... ok
+test_refresh_requires_an_existing_connection (__main__.LiveUISourceChecks.test_refresh_requires_an_existing_connection) ... ok
+test_watch_mutation_reachability_and_review_guards (__main__.LiveUISourceChecks.test_watch_mutation_reachability_and_review_guards) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.001s
+
+OK

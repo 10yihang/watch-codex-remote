@@ -1,0 +1,10 @@
+test_plists_visible_in_navigator_not_copied_as_resources (__main__.BundleConfigurationChecks.test_plists_visible_in_navigator_not_copied_as_resources) ... ok
+test_single_project_setting_drives_both_targets (__main__.BundleConfigurationChecks.test_single_project_setting_drives_both_targets) ... ok
+test_synthetic_project_overrides_resolve_companion_pair (__main__.BundleConfigurationChecks.test_synthetic_project_overrides_resolve_companion_pair) ... ok
+test_processed_pair_and_mismatches (__main__.ProcessedBundleChecks.test_processed_pair_and_mismatches) ... ok
+test_release_settings_validation (__main__.ProcessedBundleChecks.test_release_settings_validation) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.006s
+
+OK
